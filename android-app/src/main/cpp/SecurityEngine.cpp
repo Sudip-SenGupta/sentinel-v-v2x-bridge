@@ -6,119 +6,57 @@
 #include <memory>
 #include "com_sentinel_v2x_bridge_SecurityEngine.h"
 
+// ============================================================================
+// PHASE 2: Include V2X Cryptographic Engine
+// ============================================================================
+#include "v2x_crypto_engine.h"
+
 // Logging macro
 #define LOG_TAG "SecurityEngine"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-// Forward declarations
-namespace sentinel {
-    class V2XSecurityEngine;
-}
-
-// Static instance of the security engine
-static std::unique_ptr<sentinel::V2XSecurityEngine> g_security_engine = nullptr;
+// ============================================================================
+// Global V2X Crypto Engine Instance
+// ============================================================================
+static std::unique_ptr<sentinel::v2x::V2XCryptoEngine> g_crypto_engine = nullptr;
 
 /**
- * Placeholder for V2X Security Engine class
- * This will be fully implemented in the native-engine module
+ * JNI Wrapper: Initialize security engine with root CA
  */
-namespace sentinel {
-    class V2XSecurityEngine {
-    public:
-        V2XSecurityEngine() : initialized(false) {}
-        
-        ~V2XSecurityEngine() = default;
-        
-        /**
-         * Verify a V2X message signature
-         */
-        bool verifyPacket(
-            const std::vector<uint8_t>& message,
-            const std::vector<uint8_t>& signature,
-            const std::vector<std::vector<uint8_t>>& certChain) {
-            
-            if (!initialized) {
-                LOGE("Engine not initialized");
-                return false;
-            }
-            
-            // TODO: Implement IEEE 1609.2 verification
-            // - Parse signature as ECDSA (r, s components)
-            // - Extract public key from certificate
-            // - Verify signature against message
-            LOGI("verifyPacket: message length=%zu, signature length=%zu, chain size=%zu",
-                 message.size(), signature.size(), certChain.size());
-            
-            return false; // Placeholder
+JNIEXPORT jint JNICALL 
+Java_com_sentinel_v2x_bridge_SecurityEngine_initializeWithRootCA(
+    JNIEnv* env,
+    jobject /*obj*/,
+    jstring rootCAPath)
+{
+    try {
+        // Create crypto engine if not already created
+        if (!g_crypto_engine) {
+            g_crypto_engine = std::make_unique<sentinel::v2x::V2XCryptoEngine>();
+            LOGI("V2XCryptoEngine created");
         }
         
-        /**
-         * Extract sender information from certificate
-         */
-        std::string extractSenderInfo(const std::vector<uint8_t>& certificate) {
-            // TODO: Parse X.509 certificate and extract sender ID
-            LOGI("extractSenderInfo: certificate length=%zu", certificate.size());
-            return "UNKNOWN";
-        }
+        // Get root CA path from Java
+        const char* caPath = env->GetStringUTFChars(rootCAPath, nullptr);
+        LOGI("Initializing with root CA: %s", caPath);
         
-        /**
-         * Initialize with root CA certificate
-         */
-        int initialize(const std::string& rootCAPath) {
-            // TODO: Load root CA certificate from file
-            LOGI("initialize: rootCA path=%s", rootCAPath.c_str());
-            initialized = true;
-            return 0; // Success
-        }
+        // TODO: Load root CA certificate from file path
+        // For now, implementation expects certificate bytes passed separately
+        // This is a preliminary integration point
         
-        /**
-         * Validate certificate chain
-         */
-        bool validateCertificateChain(const std::vector<std::vector<uint8_t>>& chain) {
-            if (!initialized) {
-                LOGE("Engine not initialized");
-                return false;
-            }
-            
-            // TODO: Implement X.509 chain validation
-            // - Parse each certificate
-            // - Check expiration dates
-            // - Verify signature chain
-            LOGI("validateCertificateChain: chain size=%zu", chain.size());
-            
-            return false; // Placeholder
-        }
+        env->ReleaseStringUTFChars(rootCAPath, caPath);
+        return 0; // Success
         
-        /**
-         * Parse IEEE 1609.2 message
-         */
-        std::vector<uint8_t> parseMessage(const std::vector<uint8_t>& message) {
-            // TODO: Implement IEEE 1609.2 message parsing
-            // - Parse headers
-            // - Extract payload
-            // - Hash for integrity verification
-            LOGI("parseMessage: message length=%zu", message.size());
-            
-            return std::vector<uint8_t>();
-        }
-        
-        /**
-         * Cleanup resources
-         */
-        int cleanup() {
-            // TODO: Release resources
-            initialized = false;
-            LOGI("cleanup: security engine shutdown");
-            return 0;
-        }
-        
-    private:
-        bool initialized;
-    };
+    } catch (const std::exception& e) {
+        LOGE("initializeWithRootCA exception: %s", e.what());
+        return -1;
+    }
 }
 
-// JNI Implementation: verifyPacket
+/**
+ * JNI Wrapper: Verify V2X packet signature
+ */
 JNIEXPORT jboolean JNICALL 
 Java_com_sentinel_v2x_bridge_SecurityEngine_verifyPacket(
     JNIEnv* env, 
@@ -128,8 +66,8 @@ Java_com_sentinel_v2x_bridge_SecurityEngine_verifyPacket(
     jobjectArray certificateChain)
 {
     try {
-        if (!g_security_engine) {
-            LOGE("Security engine not initialized");
+        if (!g_crypto_engine) {
+            LOGE("Crypto engine not initialized");
             return JNI_FALSE;
         }
         
@@ -145,22 +83,45 @@ Java_com_sentinel_v2x_bridge_SecurityEngine_verifyPacket(
         std::vector<uint8_t> signature(signaturePtr, signaturePtr + signatureLen);
         env->ReleaseByteArrayElements(signatureBytes, signaturePtr, JNI_ABORT);
         
-        // Get certificate chain
+        // Get certificate chain (first certificate for verification)
         jsize chainLen = env->GetArrayLength(certificateChain);
-        std::vector<std::vector<uint8_t>> chain(chainLen);
-        
-        for (jsize i = 0; i < chainLen; ++i) {
-            jbyteArray certArray = (jbyteArray)env->GetObjectArrayElement(certificateChain, i);
-            jsize certLen = env->GetArrayLength(certArray);
-            jbyte* certPtr = env->GetByteArrayElements(certArray, nullptr);
-            chain[i] = std::vector<uint8_t>(certPtr, certPtr + certLen);
-            env->ReleaseByteArrayElements(certArray, certPtr, JNI_ABORT);
-            env->DeleteLocalRef(certArray);
+        if (chainLen == 0) {
+            LOGE("No certificates provided in chain");
+            return JNI_FALSE;
         }
         
-        // Call engine
-        bool result = g_security_engine->verifyPacket(message, signature, chain);
-        return result ? JNI_TRUE : JNI_FALSE;
+        jbyteArray firstCertArray = (jbyteArray)env->GetObjectArrayElement(certificateChain, 0);
+        jsize certLen = env->GetArrayLength(firstCertArray);
+        jbyte* certPtr = env->GetByteArrayElements(firstCertArray, nullptr);
+        std::vector<uint8_t> senderCert(certPtr, certPtr + certLen);
+        env->ReleaseByteArrayElements(firstCertArray, certPtr, JNI_ABORT);
+        env->DeleteLocalRef(firstCertArray);
+        
+        // Call V2XCryptoEngine to verify signature
+        LOGI("Verifying packet: msg_len=%zu, sig_len=%zu, cert_len=%zu", 
+             message.size(), signature.size(), senderCert.size());
+        
+        // Parse sender certificate to get public key
+        auto cert_info = g_crypto_engine->parse_certificate(senderCert);
+        if (cert_info.subject.empty()) {
+            LOGE("Failed to parse sender certificate");
+            return JNI_FALSE;
+        }
+        
+        // Verify ECDSA signature
+        auto result = g_crypto_engine->verify_ecdsa_signature(
+            message, 
+            signature, 
+            senderCert  // Public key embedded in certificate
+        );
+        
+        if (!result.valid) {
+            LOGI("Signature verification failed: %s", result.error_message.c_str());
+            return JNI_FALSE;
+        }
+        
+        LOGI("Signature verified successfully");
+        return JNI_TRUE;
         
     } catch (const std::exception& e) {
         LOGE("verifyPacket exception: %s", e.what());
@@ -168,58 +129,9 @@ Java_com_sentinel_v2x_bridge_SecurityEngine_verifyPacket(
     }
 }
 
-// JNI Implementation: extractSenderInfo
-JNIEXPORT jstring JNICALL 
-Java_com_sentinel_v2x_bridge_SecurityEngine_extractSenderInfo(
-    JNIEnv* env,
-    jobject /*obj*/,
-    jbyteArray certificate)
-{
-    try {
-        if (!g_security_engine) {
-            LOGE("Security engine not initialized");
-            return env->NewStringUTF("");
-        }
-        
-        jsize certLen = env->GetArrayLength(certificate);
-        jbyte* certPtr = env->GetByteArrayElements(certificate, nullptr);
-        std::vector<uint8_t> cert(certPtr, certPtr + certLen);
-        env->ReleaseByteArrayElements(certificate, certPtr, JNI_ABORT);
-        
-        std::string senderInfo = g_security_engine->extractSenderInfo(cert);
-        return env->NewStringUTF(senderInfo.c_str());
-        
-    } catch (const std::exception& e) {
-        LOGE("extractSenderInfo exception: %s", e.what());
-        return env->NewStringUTF("");
-    }
-}
-
-// JNI Implementation: initializeWithRootCA
-JNIEXPORT jint JNICALL 
-Java_com_sentinel_v2x_bridge_SecurityEngine_initializeWithRootCA(
-    JNIEnv* env,
-    jobject /*obj*/,
-    jstring rootCAPath)
-{
-    try {
-        if (!g_security_engine) {
-            g_security_engine = std::make_unique<sentinel::V2XSecurityEngine>();
-        }
-        
-        const char* caPath = env->GetStringUTFChars(rootCAPath, nullptr);
-        int result = g_security_engine->initialize(caPath);
-        env->ReleaseStringUTFChars(rootCAPath, caPath);
-        
-        return result;
-        
-    } catch (const std::exception& e) {
-        LOGE("initializeWithRootCA exception: %s", e.what());
-        return -1;
-    }
-}
-
-// JNI Implementation: validateCertificateChain
+/**
+ * JNI Wrapper: Validate certificate chain
+ */
 JNIEXPORT jboolean JNICALL 
 Java_com_sentinel_v2x_bridge_SecurityEngine_validateCertificateChain(
     JNIEnv* env,
@@ -227,14 +139,17 @@ Java_com_sentinel_v2x_bridge_SecurityEngine_validateCertificateChain(
     jobjectArray certificateChain)
 {
     try {
-        if (!g_security_engine) {
-            LOGE("Security engine not initialized");
+        if (!g_crypto_engine) {
+            LOGE("Crypto engine not initialized");
             return JNI_FALSE;
         }
         
         jsize chainLen = env->GetArrayLength(certificateChain);
         std::vector<std::vector<uint8_t>> chain(chainLen);
         
+        LOGI("Validating certificate chain with %zu certificates", chainLen);
+        
+        // Extract all certificates from Java array
         for (jsize i = 0; i < chainLen; ++i) {
             jbyteArray certArray = (jbyteArray)env->GetObjectArrayElement(certificateChain, i);
             jsize certLen = env->GetArrayLength(certArray);
@@ -242,9 +157,19 @@ Java_com_sentinel_v2x_bridge_SecurityEngine_validateCertificateChain(
             chain[i] = std::vector<uint8_t>(certPtr, certPtr + certLen);
             env->ReleaseByteArrayElements(certArray, certPtr, JNI_ABORT);
             env->DeleteLocalRef(certArray);
+            
+            LOGI("  Certificate[%zu]: %zu bytes", i, chain[i].size());
         }
         
-        bool result = g_security_engine->validateCertificateChain(chain);
+        // Validate chain using V2XCryptoEngine
+        bool result = g_crypto_engine->validate_certificate_chain(chain);
+        
+        if (result) {
+            LOGI("Certificate chain validated successfully");
+        } else {
+            LOGE("Certificate chain validation failed");
+        }
+        
         return result ? JNI_TRUE : JNI_FALSE;
         
     } catch (const std::exception& e) {
@@ -253,7 +178,41 @@ Java_com_sentinel_v2x_bridge_SecurityEngine_validateCertificateChain(
     }
 }
 
-// JNI Implementation: parseIEEE1609Message
+/**
+ * JNI Wrapper: Extract sender information from certificate
+ */
+JNIEXPORT jstring JNICALL 
+Java_com_sentinel_v2x_bridge_SecurityEngine_extractSenderInfo(
+    JNIEnv* env,
+    jobject /*obj*/,
+    jbyteArray certificate)
+{
+    try {
+        if (!g_crypto_engine) {
+            LOGE("Crypto engine not initialized");
+            return env->NewStringUTF("");
+        }
+        
+        jsize certLen = env->GetArrayLength(certificate);
+        jbyte* certPtr = env->GetByteArrayElements(certificate, nullptr);
+        std::vector<uint8_t> cert(certPtr, certPtr + certLen);
+        env->ReleaseByteArrayElements(certificate, certPtr, JNI_ABORT);
+        
+        // Parse certificate to extract sender info
+        auto cert_info = g_crypto_engine->parse_certificate(cert);
+        
+        LOGI("Extracted sender: %s", cert_info.subject.c_str());
+        return env->NewStringUTF(cert_info.subject.c_str());
+        
+    } catch (const std::exception& e) {
+        LOGE("extractSenderInfo exception: %s", e.what());
+        return env->NewStringUTF("");
+    }
+}
+
+/**
+ * JNI Wrapper: Parse IEEE 1609.2 message
+ */
 JNIEXPORT jbyteArray JNICALL 
 Java_com_sentinel_v2x_bridge_SecurityEngine_parseIEEE1609Message(
     JNIEnv* env,
@@ -261,8 +220,8 @@ Java_com_sentinel_v2x_bridge_SecurityEngine_parseIEEE1609Message(
     jbyteArray message)
 {
     try {
-        if (!g_security_engine) {
-            LOGE("Security engine not initialized");
+        if (!g_crypto_engine) {
+            LOGE("Crypto engine not initialized");
             return nullptr;
         }
         
@@ -271,14 +230,21 @@ Java_com_sentinel_v2x_bridge_SecurityEngine_parseIEEE1609Message(
         std::vector<uint8_t> messageData(messagePtr, messagePtr + messageLen);
         env->ReleaseByteArrayElements(message, messagePtr, JNI_ABORT);
         
-        std::vector<uint8_t> result = g_security_engine->parseMessage(messageData);
+        LOGI("Parsing IEEE 1609.2 message: %zu bytes", messageData.size());
         
-        if (result.empty()) {
+        // TODO: Implement IEEE 1609.2 message parsing
+        // Extract payload, headers, and metadata from structured message format
+        // For now, return SHA-256 hash of message for integrity verification
+        
+        auto hash = g_crypto_engine->sha256_hash(messageData);
+        
+        if (hash.empty()) {
+            LOGE("Failed to compute message hash");
             return nullptr;
         }
         
-        jbyteArray returnArray = env->NewByteArray(result.size());
-        env->SetByteArrayRegion(returnArray, 0, result.size(), (const jbyte*)result.data());
+        jbyteArray returnArray = env->NewByteArray(hash.size());
+        env->SetByteArrayRegion(returnArray, 0, hash.size(), (const jbyte*)hash.data());
         return returnArray;
         
     } catch (const std::exception& e) {
@@ -287,17 +253,20 @@ Java_com_sentinel_v2x_bridge_SecurityEngine_parseIEEE1609Message(
     }
 }
 
-// JNI Implementation: cleanup
+/**
+ * JNI Wrapper: Cleanup and release resources
+ */
 JNIEXPORT jint JNICALL 
 Java_com_sentinel_v2x_bridge_SecurityEngine_cleanup(
     JNIEnv* /*env*/,
     jobject /*obj*/)
 {
     try {
-        if (g_security_engine) {
-            int result = g_security_engine->cleanup();
-            g_security_engine.reset();
-            return result;
+        if (g_crypto_engine) {
+            // Cleanup V2XCryptoEngine
+            g_crypto_engine->cleanup();
+            g_crypto_engine.reset();
+            LOGI("V2XCryptoEngine cleaned up");
         }
         return 0;
         
