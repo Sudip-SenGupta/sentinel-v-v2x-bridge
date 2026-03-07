@@ -1,0 +1,31 @@
+# Gradle
+.gradle/
+build/
+*.gradle
+gradle-build.log
+
+# Android Studio / IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+*.swp
+*.swo
+*~
+
+# Build artifacts
+*.apk
+*.aar
+*.o
+*.a
+*.so
+
+# NDK
+.cxx/
+
+# Local configuration
+local.properties
+
+# OS
+.DS_Store
+Thumbs.db

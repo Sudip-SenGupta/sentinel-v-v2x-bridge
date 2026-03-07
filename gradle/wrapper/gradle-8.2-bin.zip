@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Page Not Found | Gradle</title>
+    <link rel="stylesheet" href="https://assets.gradle.com/lato/css/lato-font.css">
+    <link rel="manifest" href="https://assets.gradle.com/icon/site.webmanifest">
+    <link rel="icon" href="https://assets.gradle.com/icon/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="https://assets.gradle.com/icon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="https://assets.gradle.com/icon/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="https://assets.gradle.com/icon/apple-touch-icon.png">
+
+    <style>
+        body {
+            font-family: Lato, sans-serif;
+            margin: 0;
+            position: relative;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        a {
+            text-decoration: none;
+            background-color: transparent;
+            color: #1DA2BD;
+            -webkit-transition: all .3s ease;
+            -moz-transition: all .3s ease;
+            -o-transition: all .3s ease;
+            transition: all .3s ease;
+        }
+
+        a:hover {
+            color: #35c1e4;
+        }
+
+        #main-nav {
+            display: flex;
+            height: 50px;
+        }
+
+        #main-nav .left {
+            display: flex;
+            align-items: center;
+            margin-left: 4px;
+            background: transparent;
+            min-width: 205px;
+            padding-left: 20px;
+        }
+
+        .logo-wrapper {
+            display: flex;
+            align-items: center;
+        }
+
+        .logo-img {
+            height: 26px;
+        }
+
+        .logo-text {
+            margin-left: 4px;
+            color: #02303A;
+            font-size: 20px;
+            white-space: nowrap;
+            line-height: 17px;
+            align-self: flex-end;
+            letter-spacing: -0.66px;
+        }
+
+        #page, body {
+            min-height: 100%;
+        }
+
+        #footer {
+            position: absolute;
+            bottom: 0;
+            color: #999;
+            border-top: 1px solid #edeeef;
+            height: 33px;
+            width: 100%;
+            padding-top: 17px;
+            font-size: 12.5px;
+            text-align: center;
+        }
+
+        #footer .content {
+            margin: 0;
+            font-weight: 400;
+        }
+
+        #wrapper {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .message {
+            line-height: 120%;
+            margin-bottom: 0;
+            font-size: 46px;
+            font-weight: 500;
+            color: #FF4800;
+        }
+
+        .message-follow-up {
+            margin-top: 40px;
+            font-size: 16px;
+            line-height: 24px;
+            font-weight: 400;
+        }
+
+        #content {
+            text-align: center;
+            width: 100%;
+            font-weight: 600;
+            padding-top: 88px;
+            -webkit-font-smoothing: antialiased;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .img-container {
+            padding-top: 60px;
+        }
+
+        .msg-container {
+            padding-top: 20px;
+        }
+    </style>
+</head>
+<body>
+<div id="wrapper">
+    <div class="site-header__navigation-header">
+        <a target="_top" class="logo" href="https://gradle.org" title="Gradle">
+            <img src="/images/gradle.svg"/>
+        </a>
+    </div>
+
+    <div id="page">
+        <div id="content" class="centered">
+            <div class="img-container">
+                <img class="error-image" src="/images/gradlephant-outline.svg" width="330" height="158">
+            </div>
+            <div class="msg-container">
+                <h1 class="message">This page does not exist.</h1>
+                <h2 class="message-follow-up">
+                    We would be happy to help you on our <a class="Error__link" href="https://gradle.org/help">help page</a>.
+                </h2>
+            </div>
+        </div>
+    </div>
+
+    <div id="footer">
+        <p class="content">
+            <span class="legal"><span>© Gradle Inc. <script type="text/javascript">document.write('' + new Date().getFullYear());</script></span><span>&nbsp;&nbsp;|&nbsp;&nbsp;<a class="link" href="https://status.gradle.com/">Status</a></span></span><span class="help"><span>&nbsp;&nbsp;|&nbsp;&nbsp;<a href="https://gradle.org/contact/">Contact</a></span></span>
+        </p>
+    </div>
+</div>
+</body>
+</html>

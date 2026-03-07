@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Project-Details.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<h1 id="technical-specification-sentinel-v-v2x-bridge">Technical Specification: Sentinel-V V2X Bridge</h1>
+<p><strong>Project Lead:</strong> Sudip Dev<br>
+<strong>Date:</strong> March 2026<br>
+<strong>Version:</strong> 2.0 (Complete Technical Specification - Architecture, Security, APIs, Build Config)</p>
+<hr>
+<h2 id="1-project-overview">1. Project Overview</h2>
+<p>The <strong>Sentinel-V</strong> is a secure automotive middleware designed to bridge Android Automotive OS (AAOS) applications with a high-performance C++17 V2X (Vehicle-to-Everything) security engine. It ensures that incoming V2X safety messages are cryptographically verified before being visualized on the vehicle's head unit.</p>
+<hr>
+<h2 id="2-system-architecture">2. System Architecture</h2>
+<h3 id="data-flow-diagram">Data Flow Diagram</h3>
+<pre class="hljs"><code><div>┌─────────────────────────────────────────────────────────────────┐
+│  Vehicle Head Unit (AAOS Display)                               │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ Jetpack Compose Dashboard (Kotlin)                       │   │
+│  │ - Real-time V2X Alert Visualization                      │   │
+│  │ - Vehicle Status Display                                 │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                           ↑                                       │
+│                           │ UI State Flow                         │
+│                           ↓                                       │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ Kotlin Coroutines / ViewModel Layer                      │   │
+│  │ - Data collection &amp; aggregation                          │   │
+│  │ - JNI Bridge to native security engine                   │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                           ↑                                       │
+│                           │ JNI Call (ByteArray)                │
+│                           ↓                                       │
+└─────────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  Trusted Execution Context (TEE / Secure World)                 │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ SecurityEngine.cpp (C++17)                               │   │
+│  │ - IEEE 1609.2 Message Parsing                            │   │
+│  │ - ECDSA Signature Verification                           │   │
+│  │ - Certificate Validation (CMPv2)                         │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                           ↓                                       │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ Crypto Engine (Botan / OpenSSL)                          │   │
+│  │ - SHA-256 Hashing                                        │   │
+│  │ - ECDSA Signing/Verification                             │   │
+│  │ - Secure Random Number Generation                        │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                           ↓                                       │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ Secure Storage (PKCS#11 / Android Keystore)             │   │
+│  │ - Root CA Certificates                                   │   │
+│  │ - Device Attestation Keys                                │   │
+│  └──────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  CAN Bus / Vehicle Network                                       │
+│  - Raw V2X message stream from OBU                               │
+└─────────────────────────────────────────────────────────────────┘
+</div></code></pre>
+<h3 id="module-breakdown">Module Breakdown</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Module</th>
+<th style="text-align:left">Technology</th>
+<th style="text-align:left">Responsibility</th>
+<th style="text-align:left">Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>android-app</strong></td>
+<td style="text-align:left">Kotlin / Jetpack Compose</td>
+<td style="text-align:left">User Interface, Alerting, App Lifecycle.</td>
+<td style="text-align:left">✅ Verified</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>native-engine</strong></td>
+<td style="text-align:left">C++17 / CMake / NDK 29</td>
+<td style="text-align:left">IEEE 1609.2 signing &amp; verification.</td>
+<td style="text-align:left">🏗️ Staged</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>JNI Bridge</strong></td>
+<td style="text-align:left">C++ / JNI</td>
+<td style="text-align:left">Data serialization between JVM and Native.</td>
+<td style="text-align:left">🏗️ Staged</td>
+</tr>
+</tbody>
+</table>
+<h3 id="module-dependencies">Module Dependencies</h3>
+<pre class="hljs"><code><div>app (Kotlin/Compose)
+    ↓
+android-app (JNI Bridge)
+    ↓
+native-engine (C++17 Security Logic)
+    ↓
+NDK Toolchain (LLVM/Clang 21)
+    ↓
+Botan / OpenSSL (Crypto Libraries)
+</div></code></pre>
+<h3 id="key-technology-stack">Key Technology Stack</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Layer</th>
+<th style="text-align:left">Component</th>
+<th style="text-align:left">Version</th>
+<th style="text-align:left">Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>UI Framework</strong></td>
+<td style="text-align:left">Jetpack Compose</td>
+<td style="text-align:left">1.5+</td>
+<td style="text-align:left">Modern reactive UI declarations</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Async Runtime</strong></td>
+<td style="text-align:left">Kotlin Coroutines</td>
+<td style="text-align:left">1.7+</td>
+<td style="text-align:left">Non-blocking V2X message processing</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Security</strong></td>
+<td style="text-align:left">Android Keystore</td>
+<td style="text-align:left">API 24+</td>
+<td style="text-align:left">Hardware-backed key storage</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Crypto</strong></td>
+<td style="text-align:left">Botan / OpenSSL</td>
+<td style="text-align:left">Latest</td>
+<td style="text-align:left">ECDSA, SHA-256, X.509 validation</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Build System</strong></td>
+<td style="text-align:left">Gradle + CMake</td>
+<td style="text-align:left">8.2 / 3.22</td>
+<td style="text-align:left">Multi-language compilation</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Native Compiler</strong></td>
+<td style="text-align:left">NDK LLVM/Clang</td>
+<td style="text-align:left">29.0.14206865</td>
+<td style="text-align:left">C++17 compilation for ARM64/x86_64</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Messaging Protocol</strong></td>
+<td style="text-align:left">IEEE 1609.2</td>
+<td style="text-align:left">2016</td>
+<td style="text-align:left">V2X message authentication standard</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="25-security-architecture--threat-model">2.5 Security Architecture &amp; Threat Model</h2>
+<h3 id="threat-landscape">Threat Landscape</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Threat</th>
+<th style="text-align:left">Attack Vector</th>
+<th style="text-align:left">Mitigation</th>
+<th style="text-align:left">Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>Forged Messages</strong></td>
+<td style="text-align:left">Attacker spoofs V2X sender</td>
+<td style="text-align:left">ECDSA signature verification</td>
+<td style="text-align:left">SecurityEngine.cpp</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Certificate Replay</strong></td>
+<td style="text-align:left">Stale cert used to validate</td>
+<td style="text-align:left">Certificate expiration + CRL check</td>
+<td style="text-align:left">CMPv2 validator</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Key Extraction</strong></td>
+<td style="text-align:left">Private key compromise</td>
+<td style="text-align:left">Hardware-backed TEE storage</td>
+<td style="text-align:left">Android Keystore + PKCS#11</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Message Tampering</strong></td>
+<td style="text-align:left">In-transit bit flipping</td>
+<td style="text-align:left">SHA-256 hash-based integrity</td>
+<td style="text-align:left">Message parsing layer</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Timing Attacks</strong></td>
+<td style="text-align:left">Side-channel exploitation</td>
+<td style="text-align:left">Constant-time crypto ops</td>
+<td style="text-align:left">Botan library</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cryptographic-components">Cryptographic Components</h3>
+<ul>
+<li><strong>Signature Scheme:</strong> ECDSA (Elliptic Curve Digital Signature Algorithm)</li>
+<li><strong>Hash Function:</strong> SHA-256 for message digests</li>
+<li><strong>Key Storage:</strong> Android Keystore (hardware-backed when available) + Secure Enclave</li>
+<li><strong>Certificate Format:</strong> X.509v3 with ASN.1 DER encoding</li>
+<li><strong>Protocol:</strong> TLS 1.3 for cloud backend communication</li>
+</ul>
+<hr>
+<h2 id="26-jni-interface-specification">2.6 JNI Interface Specification</h2>
+<h3 id="kotlin-native-declarations">Kotlin Native Declarations</h3>
+<pre class="hljs"><code><div><span class="hljs-comment">// SecurityEngine.kt</span>
+<span class="hljs-keyword">external</span> <span class="hljs-keyword">object</span> SecurityEngine {
+    <span class="hljs-comment">// Verify a V2X message signature</span>
+    <span class="hljs-keyword">external</span> <span class="hljs-function"><span class="hljs-keyword">fun</span> <span class="hljs-title">verifyPacket</span><span class="hljs-params">(
+        messageData: <span class="hljs-type">ByteArray</span>,
+        signatureBytes: <span class="hljs-type">ByteArray</span>,
+        certificateChain: <span class="hljs-type">Array</span>&lt;<span class="hljs-type">ByteArray</span>&gt;
+    )</span></span>: <span class="hljs-built_in">Boolean</span>
+    
+    <span class="hljs-comment">// Extract sender information from certificate</span>
+    <span class="hljs-keyword">external</span> <span class="hljs-function"><span class="hljs-keyword">fun</span> <span class="hljs-title">extractSenderInfo</span><span class="hljs-params">(certificate: <span class="hljs-type">ByteArray</span>)</span></span>: String
+    
+    <span class="hljs-comment">// Initialize crypto engine with root CA</span>
+    <span class="hljs-keyword">external</span> <span class="hljs-function"><span class="hljs-keyword">fun</span> <span class="hljs-title">initializeWithRootCA</span><span class="hljs-params">(rootCAPath: <span class="hljs-type">String</span>)</span></span>: <span class="hljs-built_in">Int</span>
+    
+    <span class="hljs-comment">// Validate certificate chain</span>
+    <span class="hljs-keyword">external</span> <span class="hljs-function"><span class="hljs-keyword">fun</span> <span class="hljs-title">validateCertificateChain</span><span class="hljs-params">(chain: <span class="hljs-type">Array</span>&lt;<span class="hljs-type">ByteArray</span>&gt;)</span></span>: <span class="hljs-built_in">Boolean</span>
+}
+</div></code></pre>
+<h3 id="c17-implementation-layer">C++17 Implementation Layer</h3>
+<pre class="hljs"><code><div><span class="hljs-comment">// SecurityEngine.cpp (to be implemented)</span>
+<span class="hljs-keyword">extern</span> <span class="hljs-string">"C"</span> {
+    <span class="hljs-function">jboolean <span class="hljs-title">Java_com_sentinel_v2x_SecurityEngine_verifyPacket</span><span class="hljs-params">(
+        JNIEnv* env,
+        jobject obj,
+        jbyteArray messageData,
+        jbyteArray signature,
+        jobjectArray certChain
+    )</span>
+    </span>{
+        <span class="hljs-comment">// 1. Decode bytes from JVM</span>
+        <span class="hljs-comment">// 2. Parse ECDSA signature</span>
+        <span class="hljs-comment">// 3. Extract public key from certificate</span>
+        <span class="hljs-comment">// 4. Verify signature against message</span>
+        <span class="hljs-comment">// 5. Return validation result</span>
+    }
+}
+</div></code></pre>
+<hr>
+<h2 id="3-critical-engineering-decisions--fixes">3. Critical Engineering Decisions &amp; Fixes</h2>
+<h3 id="a-the-wsl2-%22hybrid%22-strategy">A. The WSL2 &quot;Hybrid&quot; Strategy</h3>
+<p>To resolve the conflict between the Windows-based Android Studio and the Linux-based build environment, the following configuration was established:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Resource</th>
+<th style="text-align:left">Location</th>
+<th style="text-align:left">Decision/Reasoning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>Android SDK</strong></td>
+<td style="text-align:left">Windows (<code>/mnt/c/...</code>)</td>
+<td style="text-align:left">Shared to allow Windows GPU-accelerated Emulators.</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Android NDK</strong></td>
+<td style="text-align:left">WSL2 (<code>/home/sudip_dev/...</code>)</td>
+<td style="text-align:left"><strong>Fix:</strong> Replaced Windows <code>.exe</code> binaries with Linux NDK 29 to allow native <code>clang</code> execution.</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Project Files</strong></td>
+<td style="text-align:left">WSL2 Home Directory</td>
+<td style="text-align:left">Optimized for Linux file I/O to speed up C++ indexing.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="b-build-pipeline-resolution">B. Build Pipeline Resolution</h3>
+<p>The build was successfully stabilized after clearing the following hurdles:</p>
+<ol>
+<li><strong>Manifest Restoration:</strong> Manually created <code>AndroidManifest.xml</code> and <code>MainActivity.kt</code> to satisfy the Android Gradle Plugin.</li>
+<li><strong>Permission Alignment:</strong> Executed <code>chmod</code> on the NDK toolchain to allow the Linux kernel to execute the compiler.</li>
+<li><strong>Task Orchestration:</strong> Verified all <strong>135 Gradle tasks</strong>, confirming a successful end-to-end compilation of the Kotlin layer.</li>
+</ol>
+<hr>
+<h2 id="4-current-project-status">4. Current Project Status</h2>
+<ul>
+<li><strong>Build Execution:</strong> 100% (All 135 tasks completed).</li>
+<li><strong>Kotlin/Java Compilation:</strong> Successful.</li>
+<li><strong>Manifest Merging:</strong> Successful.</li>
+<li><strong>Asset Packaging:</strong> Successful (Debug/Release APKs generated).</li>
+</ul>
+<h3 id="generated-artifacts">Generated Artifacts</h3>
+<ul>
+<li><code>app/build/outputs/apk/debug/app-debug.apk</code></li>
+<li><code>app/build/intermediates/</code> (Pre-compiled classes and merged resources)</li>
+</ul>
+<hr>
+<h2 id="5-technical-roadmap-phase-2">5. Technical Roadmap: Phase 2</h2>
+<p>With the &quot;backbone&quot; verified, the project now moves into <strong>Native Integration</strong>:</p>
+<ol>
+<li><strong>JNI Header Generation:</strong> Map the first native method: <code>external fun verifyPacket(data: ByteArray): Boolean</code>.</li>
+<li><strong>C++ Implementation:</strong> Implement <code>SecurityEngine.cpp</code> using C++17 <code>std::variant</code> for message type safety.</li>
+<li><strong>CMake Integration:</strong> Link the <code>native-engine</code> to the <code>android-app</code> via <code>externalNativeBuild</code>.</li>
+</ol>
+<hr>
+<h2 id="6-build--configuration-details">6. Build &amp; Configuration Details</h2>
+<h3 id="gradle-multi-module-setup">Gradle Multi-Module Setup</h3>
+<pre class="hljs"><code><div>settings.gradle.kts
+├── :app (Main AAOS Application)
+│   └── build.gradle.kts
+│       ├── Android Application Plugin
+│       ├── Jetpack Compose Configuration
+│       └── Dependency Management
+└── :android-app (JNI Bridge Library)
+    └── build.gradle.kts
+        ├── Android Library Plugin
+        ├── NDK Configuration (native-engine link)
+        └── C++ Build Integration
+</div></code></pre>
+<h3 id="cmakeliststxt-configuration">CMakeLists.txt Configuration</h3>
+<ul>
+<li><strong>Minimum Version:</strong> 3.22.1 (supports Android NDK integration)</li>
+<li><strong>C++ Standard:</strong> C++17 with modern features</li>
+<li><strong>Target ABI:</strong> x86_64 (primary), ARM64 (future)</li>
+<li><strong>Linked Libraries:</strong> Botan, OpenSSL, Android Log (<code>liblog.so</code>)</li>
+</ul>
+<h3 id="key-build-properties">Key Build Properties</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Property</th>
+<th style="text-align:left">Value</th>
+<th style="text-align:left">Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><code>compileSdk</code></td>
+<td style="text-align:left">34</td>
+<td style="text-align:left">Latest Android API level</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>minSdk</code></td>
+<td style="text-align:left">24</td>
+<td style="text-align:left">Covers ~99% of AAOS devices</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>targetSdk</code></td>
+<td style="text-align:left">34</td>
+<td style="text-align:left">Modern Android best practices</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>ndkVersion</code></td>
+<td style="text-align:left">29.0.14206865</td>
+<td style="text-align:left">LLVM 21 with security hardening</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>kotlinVersion</code></td>
+<td style="text-align:left">1.9.0</td>
+<td style="text-align:left">Coroutines + Multiplatform support</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="7-development-workflow--environment-setup">7. Development Workflow &amp; Environment Setup</h2>
+<h3 id="prerequisites">Prerequisites</h3>
+<pre class="hljs"><code><div><span class="hljs-comment"># 1. Windows Prerequisites</span>
+- Android Studio Ladybug (2024.2.1)
+- Windows 11 Pro with WSL2 Ubuntu 22.04 LTS
+- 16GB RAM minimum (8GB <span class="hljs-keyword">for</span> WSL2)
+
+<span class="hljs-comment"># 2. WSL2 Setup</span>
+wsl --install -d Ubuntu-22.04
+wsl --<span class="hljs-built_in">set</span>-version Ubuntu-22.04 2
+
+<span class="hljs-comment"># 3. WSL2 Environment Variables (add to ~/.bashrc)</span>
+<span class="hljs-built_in">export</span> ANDROID_HOME=<span class="hljs-string">"/mnt/c/Users/SenGuptaSudip/AppData/Local/Android/Sdk"</span>
+<span class="hljs-built_in">export</span> NDK_HOME=<span class="hljs-string">"<span class="hljs-variable">$HOME</span>/Android/Sdk/ndk/android-ndk-r29"</span>
+<span class="hljs-built_in">export</span> PATH=<span class="hljs-string">"/tmp/gradle-8.2/bin:<span class="hljs-variable">$PATH</span>"</span>
+</div></code></pre>
+<h3 id="build-workflow">Build Workflow</h3>
+<pre class="hljs"><code><div><span class="hljs-comment"># Configure environment</span>
+<span class="hljs-built_in">cd</span> ~/sentinel-v-v2x-bridge
+<span class="hljs-built_in">source</span> ~/.bashrc
+
+<span class="hljs-comment"># Full clean build</span>
+./gradlew clean build
+
+<span class="hljs-comment"># Build specific module</span>
+./gradlew :app:build
+./gradlew :android-app:build
+
+<span class="hljs-comment"># Run tests</span>
+./gradlew <span class="hljs-built_in">test</span>
+
+<span class="hljs-comment"># Generate APK</span>
+./gradlew assembleDebug   <span class="hljs-comment"># Debug APK</span>
+./gradlew assembleRelease <span class="hljs-comment"># Release APK (requires signing key)</span>
+</div></code></pre>
+<h3 id="ide-integration-android-studio-on-windows">IDE Integration (Android Studio on Windows)</h3>
+<ol>
+<li>Open project: <code>File → Open</code> → WSL path: <code>\\wsl$\Ubuntu-22.04\home\sudip_dev\sentinel-v-v2x-bridge</code></li>
+<li>Verify SDK location: <code>File → Settings → Appearance &amp; Behavior → System Settings → Android SDK</code></li>
+<li>Configure Gradle: <code>File → Settings → Build, Execution, Deployment → Gradle</code></li>
+<li>Sync project: <code>File → Sync Now</code></li>
+</ol>
+<hr>
+<h2 id="8-known-issues--limitations">8. Known Issues &amp; Limitations</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Issue</th>
+<th style="text-align:left">Impact</th>
+<th style="text-align:left">Workaround</th>
+<th style="text-align:left">Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>Native C++ Build Disabled</strong></td>
+<td style="text-align:left">No native code compilation yet</td>
+<td style="text-align:left">CMake cross-compilation setup pending</td>
+<td style="text-align:left">HIGH</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Windows NDK Incompatibility</strong></td>
+<td style="text-align:left">WSL2 can't use Windows NDK binaries</td>
+<td style="text-align:left">Downloaded Linux NDK 29 separately</td>
+<td style="text-align:left">RESOLVED</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Gradle Wrapper Classpath Issue</strong></td>
+<td style="text-align:left">./gradlew script failed initially</td>
+<td style="text-align:left">Use <code>/tmp/gradle-8.2/bin/gradle</code> directly</td>
+<td style="text-align:left">RESOLVED</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Path Separator Handling</strong></td>
+<td style="text-align:left">File paths with spaces in Windows paths</td>
+<td style="text-align:left">All paths validated with proper escaping</td>
+<td style="text-align:left">RESOLVED</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>No Emulator Support (WSL2)</strong></td>
+<td style="text-align:left">Cannot run Android emulator from WSL2</td>
+<td style="text-align:left">Use Windows Android Studio emulator via IDE</td>
+<td style="text-align:left">WORKAROUND</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="9-testing-strategy">9. Testing Strategy</h2>
+<h3 id="unit-testing-phase-1">Unit Testing (Phase 1)</h3>
+<pre class="hljs"><code><div><span class="hljs-comment">// app/src/test/java/com/sentinel/v2x/SecurityEngineTest.kt</span>
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">SecurityEngineTest</span> </span>{
+    <span class="hljs-meta">@Test</span>
+    <span class="hljs-function"><span class="hljs-keyword">fun</span> <span class="hljs-title">testPacketVerificationWithValidSignature</span><span class="hljs-params">()</span></span> {
+        <span class="hljs-comment">// Arrange</span>
+        <span class="hljs-keyword">val</span> validPacket = loadTestFixture(<span class="hljs-string">"valid-packet.bin"</span>)
+        <span class="hljs-keyword">val</span> validSignature = loadTestFixture(<span class="hljs-string">"valid-signature.bin"</span>)
+        
+        <span class="hljs-comment">// Act</span>
+        <span class="hljs-keyword">val</span> result = SecurityEngine.verifyPacket(validPacket, validSignature, certChain)
+        
+        <span class="hljs-comment">// Assert</span>
+        assertTrue(result)
+    }
+    
+    <span class="hljs-meta">@Test</span>
+    <span class="hljs-function"><span class="hljs-keyword">fun</span> <span class="hljs-title">testPacketRejectionWithInvalidSignature</span><span class="hljs-params">()</span></span> {
+        <span class="hljs-comment">// Verify rejected packets with tampered data</span>
+    }
+}
+</div></code></pre>
+<h3 id="integration-testing-phase-2">Integration Testing (Phase 2)</h3>
+<ul>
+<li>JNI roundtrip verification</li>
+<li>Certificate chain validation</li>
+<li>End-to-end V2X message flow</li>
+</ul>
+<h3 id="performance-benchmarks-phase-3">Performance Benchmarks (Phase 3)</h3>
+<ul>
+<li>Signature verification latency: Target <strong>&lt; 50ms</strong></li>
+<li>Message throughput: Target <strong>&gt; 1000 msg/sec</strong></li>
+<li>Memory footprint: Target <strong>&lt; 50MB</strong></li>
+</ul>
+<hr>
+<h2 id="10-performance--non-functional-requirements">10. Performance &amp; Non-Functional Requirements</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Requirement</th>
+<th style="text-align:left">Target</th>
+<th style="text-align:left">Measurement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>Latency</strong></td>
+<td style="text-align:left">&lt; 50ms per packet</td>
+<td style="text-align:left">JNI roundtrip + crypto ops</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Throughput</strong></td>
+<td style="text-align:left">1000+ msg/sec</td>
+<td style="text-align:left">Peak V2X message rate</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Memory</strong></td>
+<td style="text-align:left">&lt; 50MB heap</td>
+<td style="text-align:left">App lifecycle</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Code Size</strong></td>
+<td style="text-align:left">&lt; 5MB APK (native lib)</td>
+<td style="text-align:left">Release build</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Battery Impact</strong></td>
+<td style="text-align:left">&lt; 2% additional drain</td>
+<td style="text-align:left">Idle vs. active V2X</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Certification</strong></td>
+<td style="text-align:left">ISO 26262 ASIL-B ready</td>
+<td style="text-align:left">Security architecture aligned</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="11-troubleshooting-guide">11. Troubleshooting Guide</h2>
+<h3 id="build-failures">Build Failures</h3>
+<pre class="hljs"><code><div><span class="hljs-comment"># Clear all caches</span>
+rm -rf .gradle build */build
+
+<span class="hljs-comment"># Verify Android SDK</span>
+ls <span class="hljs-variable">$ANDROID_HOME</span>/platforms/
+ls <span class="hljs-variable">$ANDROID_HOME</span>/build-tools/
+
+<span class="hljs-comment"># Check NDK setup</span>
+<span class="hljs-variable">$NDK_HOME</span>/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --version
+
+<span class="hljs-comment"># Run with verbose logging</span>
+./gradlew build --info --stacktrace
+</div></code></pre>
+<h3 id="runtime-issues">Runtime Issues</h3>
+<pre class="hljs"><code><div><span class="hljs-comment"># Check JNI linkage</span>
+java -XshowSettings:properties -version 2&gt;&amp;1 | grep java.library.path
+
+<span class="hljs-comment"># Verify APK contents</span>
+unzip -l app/build/outputs/apk/debug/app-debug.apk | grep .so
+
+<span class="hljs-comment"># Logcat filtering</span>
+adb logcat | grep -i <span class="hljs-string">"SecurityEngine\|JNI"</span>
+</div></code></pre>
+<hr>
+<h2 id="6-document-metadata">6. Document Metadata</h2>
+<ul>
+<li><strong>OS:</strong> Windows 11 Pro / Ubuntu 22.04 LTS (WSL2)</li>
+<li><strong>IDE:</strong> Android Studio Ladybug (2024.2.1)</li>
+<li><strong>Build Tooling:</strong> Gradle 8.2 / CMake 3.22.1 / NDK 29.0</li>
+<li><strong>Last Updated:</strong> March 6, 2026</li>
+<li><strong>Documentation Completeness:</strong> 100% (Architecture, Security, APIs, Config, Workflow, Testing, Troubleshooting)</li>
+<li><strong>Status:</strong> Production-ready for Phase 1 (Kotlin/Java Layer)</li>
+</ul>
+
+</body>
+</html>
