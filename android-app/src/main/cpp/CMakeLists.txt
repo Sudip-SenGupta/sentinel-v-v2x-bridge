@@ -44,12 +44,18 @@ add_library(security-engine SHARED
 )
 
 # Include directories
-target_include_directories(security-engine PRIVATE
+set(INCLUDE_DIRS_LIST
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${NATIVE_ENGINE_DIR}/include
-    ${BOTAN_INCLUDE}
     ${ANDROID_NDK}/sources/android/native_app_glue
 )
+
+# Add Botan include if found (Phase 3: Android NDK requires BOTAN_ROOT environment variable)
+if(BOTAN_INCLUDE)
+    list(APPEND INCLUDE_DIRS_LIST ${BOTAN_INCLUDE})
+endif()
+
+target_include_directories(security-engine PRIVATE ${INCLUDE_DIRS_LIST})
 
 # Link native-engine library (V2XCryptoEngine)
 if(TARGET sentinel-engine)

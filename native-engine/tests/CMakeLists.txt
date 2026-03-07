@@ -21,7 +21,12 @@ message(STATUS "✓ Botan library found: ${BOTAN_LIB}")
 # ============================================================================
 add_executable(crypto_engine_test
     test_v2x_crypto_engine.cpp
+    test_coer_decoder_vectors.cpp
+    test_message_processor_integration.cpp
     ../src/v2x_crypto_engine.cpp
+    ../src/v2x_coer_decoder.cpp
+    ../src/v2x_payload_validator.cpp
+    ../src/v2x_message_processor.cpp
 )
 
 # Include directories

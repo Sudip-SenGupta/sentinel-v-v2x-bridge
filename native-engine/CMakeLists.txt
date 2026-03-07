@@ -68,10 +68,16 @@ message(STATUS "Botan Libraries: ${BOTAN_LIBRARIES}")
 
 set(SOURCES
     src/v2x_crypto_engine.cpp
+    src/v2x_coer_decoder.cpp
+    src/v2x_payload_validator.cpp
+    src/v2x_message_processor.cpp
 )
 
 set(HEADERS
     include/v2x_crypto_engine.h
+    include/v2x_coer_decoder.h
+    include/v2x_payload_validator.h
+    include/v2x_message_processor.h
 )
 
 # ============================================================================
