@@ -1,318 +1,328 @@
 # Sentinel-V V2X Security Bridge
 
-Professional-grade V2X (Vehicle-to-Everything) security bridge for Android automotive platforms, implementing IEEE 1609.2 cryptographic message validation.
+V2X security bridge for Android platforms, with a Kotlin/Android layer, an Android JNI library module, and a native C++ engine.
 
-> 📊 **Diagram Formats**: This README includes ASCII diagrams (works everywhere). For interactive Mermaid diagrams, see [docs/ARCHITECTURE-DIAGRAMS.md](docs/ARCHITECTURE-DIAGRAMS.md)
+## Current State
 
-## 🏗️ Architecture Overview
+The repository currently has three important parts:
 
+- `app/`: Android application module
+- `android-app/`: Android library module that owns the JNI-facing Android integration
+- `native-engine/`: C++ engine with crypto, decoding, validation, and native tests
+
+This is not currently a fully symmetric cross-platform build.
+
+- Linux/WSL is the reliable environment for full native engine development and testing.
+- Android currently uses a minimal JNI surface for integration validation.
+- Full Botan-backed native crypto is implemented in `native-engine/`, but that is not the current stable Android packaging path.
+
+## Prerequisites
+
+### For Linux/WSL Native Development
+
+| Requirement | Minimum Version | Notes |
+|---|---|---|
+| CMake | 3.22+ | Required by current `native-engine` CMake files |
+| GCC/Clang | GCC 9+ or Clang 10+ | C++17 support required |
+| Python | 3.8+ | For Botan configure script |
+| Make | GNU Make 4.2+ | For native builds |
+
+### For Android Development
+
+| Requirement | Version | Notes |
+|---|---|---|
+| Android SDK | API 24+ | Target/compile SDK 34 in current Gradle files |
+| Android NDK | 25.0.8775105 | Matches the pinned project NDK version |
+| Gradle | 8.2 | Bundled via wrapper |
+| Java | 17+ | Required for AGP 8.2 |
+| Android Studio | Latest | Optional but recommended |
+
+### Machine-Specific Configuration
+
+Create `local.properties` in the project root.
+
+Recommended Linux/WSL-first setup:
+
+```properties
+sdk.dir=/home/your-user/Android/Sdk
+ndk.dir=/home/your-user/Android/Sdk/ndk/25.0.8775105
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  🚗 AUTOMOTIVE ANDROID UI                                       │
-│     Kotlin/Jetpack Compose                                      │
-│     (User Interface & Activities)                               │
-└────────────────────┬────────────────────────────────────────────┘
-                     │ Native Method Calls
-                     ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  🌉 JNI BRIDGE                                                  │
-│     Java ↔ C++ Data Marshalling                                 │
-│     (SecurityEngine.kt/SecurityEngine.cpp)                      │
-└────────────────────┬────────────────────────────────────────────┘
-                     │ Byte Array Conversion
-                     ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  ⚙️ SENTINEL-V ENGINE                                           │
-│     C++17 Security Core                                         │
-│     (ECDSA, SHA-256, X.509 Validation)                          │
-└────────────────────┬────────────────────────────────────────────┘
-                     │
-        ┌────────────┴────────────┐
-        │                         │
-   YES  ▼                    NO   ▼
-┌───────────────────┐     ┌──────────────────┐
-│ ✅ VALID MESSAGE  │     │ 🚨 THREAT ALERT  │
-│  V2X Dispatcher   │     │  Alert Service   │
-└────────┬──────────┘     └────────┬─────────┘
-         │                         │
-         └─────────────┬───────────┘
-                       ▼
-        ┌──────────────────────────┐
-        │  📡 V2V / V2I            │
-        │  Communication Handler   │
-        └──────────────────────────┘
+
+If you are deliberately using Windows-hosted Android tooling for Gradle tasks, adjust the paths to your Windows installation instead.
+
+Adjust paths to match your actual Android SDK/NDK installation location.
+
+## Automated Environment Setup
+
+To automate Linux/WSL setup, use the provided setup script:
+
+```bash
+# Full setup (native + Android tools in WSL)
+bash scripts/setup-wsl-environment.sh
+
+# Native tools only
+bash scripts/setup-wsl-environment.sh --native-only
+
+# Android tools only
+bash scripts/setup-wsl-environment.sh --android-only
 ```
 
-## 📋 Project Structure
+The script is intended for Linux/WSL environment bootstrapping. It will:
 
+- Install/verify CMake, GCC, Python, Make
+- Download and install Android SDK/NDK in WSL
+- Set up environment variables
+- Create `local.properties` automatically
+- Build and verify native tests
+- Test Gradle configuration
+
+After running, update your shell configuration:
+
+```bash
+source ~/.bashrc  # or ~/.zshrc if using zsh
 ```
+
+For manual setup, see [Machine-Specific Configuration](#machine-specific-configuration).
+
+## Quick Start
+
+### For Native Engine Development (Linux/WSL)
+
+```bash
+# Clone and enter directory
+git clone <repo-url>
+cd sentinel-v-v2x-bridge
+
+# Build native engine with CMake
+mkdir -p native-engine/build
+cd native-engine/build
+cmake ..
+make
+
+# Run native tests
+./tests/crypto_engine_test
+```
+
+### For Android Development (Windows/Mac/Linux)
+
+```bash
+# Ensure local.properties is configured (see Prerequisites)
+
+# Build Android app
+./gradlew :app:build
+
+# Build Android library
+./gradlew :android-app:build
+
+# Run instrumented tests on emulator (x86_64 validated)
+# Exact validated class filter:
+./gradlew :android-app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.sentinel.v2x.V2XJNITest
+```
+
+### For Full Environment Setup
+
+1. Set up Android SDK/NDK paths in `local.properties`
+2. For native work: use Linux/WSL terminal
+3. For Android work: use Android Studio or command-line Gradle
+4. For validation: run native tests on Linux, then Android tests on emulator/device
+
+## What Changed From The Original Plan
+
+The original approach assumed:
+
+- Android Studio on Windows 11
+- SDK on Windows
+- NDK/toolchain work in WSL/Linux
+- a smooth hybrid build flow from Windows UI tooling into Linux native tooling
+
+That plan diverged in practice.
+
+The main issues were:
+
+- Windows/WSL path handling became fragile
+- Gradle and Java execution differed by host environment
+- native packaging accidentally pulled Linux-built shared libraries into Android
+- documentation drifted away from the real module/build state
+
+As a result, the project has effectively shifted to:
+
+- Linux/WSL for full native engine work
+- Android for JNI integration validation
+- a minimal Android JNI library target, `v2x-jni`, for current device/emulator tests
+
+## Module Layout
+
+```text
 sentinel-v-v2x-bridge/
-│
-├── 📦 app/                              Main Android Application
-│   ├── src/main/
-│   │   ├── AndroidManifest.xml
-│   │   ├── kotlin/                      Activities & UI (Kotlin)
-│   │   └── res/                         Layout, Strings, Drawables
-│   └── build.gradle.kts
-│
-├── 🌉 android-app/                      JNI Bridge Module
-│   ├── src/main/
-│   │   ├── kotlin/com/sentinel/v2x/bridge/
-│   │   │   └── SecurityEngine.kt        ← JNI Interface (6 methods)
-│   │   ├── cpp/
-│   │   │   ├── SecurityEngine.cpp       ← C++ Implementation (310 LOC)
-│   │   │   ├── CMakeLists.txt          ← CMake Config
-│   │   │   └── native-lib.h
-│   │   └── AndroidManifest.xml
-│   └── build.gradle.kts                externalNativeBuild enabled
-│
-├── 🔐 native-engine/                    Crypto Engine (Phase 2)
-│   ├── include/                         Headers (TBD)
-│   ├── src/                             Implementation (TBD)
-│   ├── tests/                           Unit Tests (TBD)
-│   └── CMakeLists.txt
-│
-├── 📚 docs/
-│   ├── Project-Details.md               Technical Specification
-│   └── Project-Details.html
-│
-├── ⚙️ Gradle Configuration
-│   ├── build.gradle.kts                 Root build config
-│   ├── settings.gradle.kts              Module declarations
-│   ├── gradle.properties                Gradle properties
-│   └── local.properties                 SDK/NDK paths
-│
-└── 📄 Documentation Files
-    ├── README.md                        (This file)
-    ├── DIRECTORY-STRUCTURE-GUIDE.md     Detailed structure
-    ├── PHASE-1-SESSION-SUMMARY.md       Implementation notes
-    └── LICENSE
++-- app/                 Android application module
++-- android-app/         Android library / JNI integration module
++-- native-engine/       Native C++ engine and native tests
++-- docs/                Supporting documentation
++-- gradle/              Gradle wrapper files
++-- build.gradle.kts     Root Gradle config
++-- settings.gradle.kts  Includes :app and :android-app
++-- gradle.properties    Shared Gradle settings
++-- local.properties     Local SDK/NDK paths (machine-specific)
 ```
 
-## 🚀 Quick Start
+## Active Build Model
 
-### Prerequisites
-- **Android SDK 34+**: `/mnt/c/Users/.../Android/Sdk` (Windows)
-- **NDK 25**: `/home/sudip_dev/Android/Sdk/ndk/android-ndk-r25` (WSL2)
-- **Gradle 8.2**: Auto-downloaded or `/tmp/gradle-8.2/`
-- **CMake 3.22+**: Included with NDK
+Current intended dependency chain:
 
-### Build
-
-```bash
-# Full build (all modules)
-cd /home/sudip_dev/sentinel-v-v2x-bridge
-export ANDROID_HOME="/mnt/c/Users/SenGuptaSudip/AppData/Local/Android/Sdk"
-/tmp/gradle-8.2/bin/gradle build
-
-# Native library only (faster)
-/tmp/gradle-8.2/bin/gradle android-app:assembleDebug
-
-# Clean build
-/tmp/gradle-8.2/bin/gradle clean build
+```text
+app -> android-app -> native-engine
 ```
 
-### Installation
+In practice:
 
-```bash
-# Install debug APK to emulator/device
-adb install -r app/build/outputs/apk/debug/app-debug.apk
-```
+- `app` builds the Android app
+- `android-app` builds the Android library and JNI-facing Android integration
+- `native-engine` contains the real native engine implementation
 
-## 📊 Build Output
+For Android instrumented testing today, the active native target is:
 
-| Artifact | Location | Size | Purpose |
-|----------|----------|------|---------|
-| **libsecurity-engine.so (ARM64)** | `android-app/build/.../arm64-v8a/` | 62 KB | ARM64 native library |
-| **libsecurity-engine.so (x86_64)** | `android-app/build/.../x86_64/` | 64 KB | x86_64 native library |
-| **app-debug.apk** | `app/build/outputs/apk/debug/` | ~30 MB | Complete Android app |
-| **android-app-debug.aar** | `android-app/build/outputs/aar/` | - | JNI library package |
+- `v2x-jni`
 
-## 📈 Development Phases
+This target is intentionally minimal and avoids pulling full Botan dependencies into the Android test APK.
 
-```
-┌─────────────────────────────────┐
-│ ✅ PHASE 1: JNI BRIDGE (DONE)   │  Completed ✓
-│ • Kotlin JNI Interface          │  Commit: b4cd545
-│ • C++ JNI Implementation        │  47 files, +2,500 LOC
-│ • CMake Build Config            │
-│ • Gradle Integration            │
-│ • Native Compilation (2 ABIs)   │
-└──────────────┬──────────────────┘
-               │
-               ▼
-       ┌──────────────────────────────────┐
-       │ ✅ PHASE 2: CRYPTO ENGINE (DONE) │  Completed ✓
-       │ • ECDSA P-256 Verification       │  Performance: ~100μs (vs 10ms req)
-       │ • SHA-256 Hashing (NIST vectors) │  14/14 tests passing
-       │ • X.509 Certificate Validation   │  Botan 2.19.1 integration
-       │ • JNI Bridge Integration         │  Cross-platform build ready
-       └────────────┬─────────────────────┘
-                    │ 3-4 days
-                    ▼
-            ┌──────────────────────────────┐
-            │ 🎯 PHASE 3: MESSAGE PARSER   │  Pending
-            │ • IEEE 1609.2 Decoding       │
-            │ • Header Extraction          │
-            │ • Payload Parsing            │
-            └────────────┬─────────────────┘
-                         │ 2-3 days
-                         ▼
-                  ┌──────────────────────────┐
-                  │ 🔒 PHASE 4: CERT CHAIN   │  Pending
-                  │ • Expiration Checking    │
-                  │ • Chain Validation       │
-                  │ • Revocation List        │
-                  └──────────────────────────┘
-```
+## Native Engine Status
 
-### Phase 1: JNI Bridge ✅ (COMPLETE)
-- Kotlin JNI interface (6 external methods)
-- C++ JNI implementation (310 LOC)
-- CMake build configuration
-- Gradle integration
-- Native library compilation (both architectures)
-- **Commit**: `b4cd545` — 47 files, +2,500 insertions
+`native-engine/` is no longer a placeholder.
 
-### Phase 2: Crypto Engine (PENDING)
-- ECDSA signature verification
-- SHA-256 hashing
-- X.509 certificate parsing
-- Botan/OpenSSL integration
+It already contains:
 
-### Phase 3: V2X Message Parser (PENDING)
-- IEEE 1609.2 message decoding
-- Header extraction
-- Payload parsing
+- C++ headers in `native-engine/include/`
+- C++ implementation in `native-engine/src/`
+- native tests in `native-engine/tests/`
+- CMake-based native build logic in `native-engine/CMakeLists.txt`
 
-### Phase 4: Certificate Chain Validation (PENDING)
-- Certificate expiration checking
-- Chain validation
-- Revocation list support
+Native engine work is currently best treated as Linux/WSL-first.
 
-## 🔧 Key Technologies
+## Android Status
 
-| Component | Technology | Purpose |
-|-----------|-----------|---------|
-| **Application UI** | Kotlin, Jetpack Compose | Android user interface |
-| **JNI Bridge** | C, JNI | Java ↔ Native communication |
-| **Security Engine** | C++17, std library | Cryptographic operations |
-| **Build System** | Gradle 8.2, CMake 3.22 | Project compilation |
-| **Android NDK** | v25 (Linux) | C++ compilation toolchain |
-| **Crypto Library** | Botan 2.19.1 (BSD-2-Clause) | ECDSA & X.509 primitives |
+Android support currently means:
 
-## 📚 Documentation
+- Gradle modules `:app` and `:android-app`
+- Android instrumented tests for JNI integration
+- minimal JNI validation via `V2X.kt` and `v2x-jni`
 
-- **[Architecture Diagrams](docs/ARCHITECTURE-DIAGRAMS.md)** — Mermaid diagrams (GitHub/VS Code rendering)
-- **[Project Details](docs/Project-Details.md)** — Complete technical specification
-- **[Directory Structure Guide](DIRECTORY-STRUCTURE-GUIDE.md)** — Folder organization explained
-- **[Phase 1 Summary](PHASE-1-SESSION-SUMMARY.md)** — Implementation details & decisions
+Android support does not currently mean:
 
-## 🛠️ Development Environment
+- stable full Botan-backed crypto packaging into the Android APK/test APK
+- a fully frictionless Windows Android Studio + WSL backend workflow
 
-**WSL2 Strategy (Hybrid Setup)**
-- **Windows Host**: Hosts SDK for GPU-accelerated emulator
-- **WSL2 Linux**: Hosts NDK for native compilation
-- **Rationale**: Windows NDK 29 lacks Linux prebuilts; Linux tools must run in WSL2
+## Recommended Working Model
 
-**Key Paths**
-```bash
-# Windows (for emulator)
-SDK: /mnt/c/Users/SenGuptaSudip/AppData/Local/Android/Sdk
+### Linux / WSL
 
-# WSL2 Linux (for compilation)
-NDK: /home/sudip_dev/Android/Sdk/ndk/android-ndk-r25
-Project: /home/sudip_dev/sentinel-v-v2x-bridge
-```
+Use Linux/WSL for:
 
-## 🔗 Building & Testing
+- native engine development
+- native CMake builds
+- native test execution
+- Botan-backed crypto development
 
-### Incremental Build (Fast)
-```bash
-# Only recompiles changed files (~5 seconds)
-/tmp/gradle-8.2/bin/gradle android-app:assembleDebug
-```
+### Android
 
-### Full Build (Slow)
-```bash
-# Complete rebuild of all modules
-/tmp/gradle-8.2/bin/gradle build --rerun-tasks
-```
+Use Android for:
 
-### Verify Native Libraries
-```bash
-file android-app/build/intermediates/library_and_local_jars_jni/debug/jni/arm64-v8a/libsecurity-engine.so
-# Output: ELF 64-bit LSB shared object, ARM aarch64, ...
-```
+- app/module integration
+- instrumented JNI smoke tests
+- validating that the Android boundary is wired correctly
 
-## 📋 System Requirements
+## Current Status Matrix
 
-- **OS**: Linux (WSL2) or macOS for development
-- **RAM**: 8GB minimum, 16GB recommended
-- **Disk**: 20GB for SDK/NDK/gradle cache
-- **Java**: JDK 11 or higher
-- **Android SDK**: SDK 24+ (Android 7.0)
+| Feature | Linux/WSL | Android Emulator (x86_64) | Android Device (arm64-v8a) | Notes |
+|---|---|---|---|---|
+| Native Engine Build | Ready | N/A | N/A | CMake full build works reliably |
+| Native Tests | Ready | N/A | N/A | Can run locally in Linux/WSL |
+| Android App Compile | Ready | Host op | Host op | Gradle builds reliably (runs on host) |
+| Android Library Compile | Ready | Host op | Host op | JNI integration module builds (runs on host) |
+| JNI Integration Tests | N/A | Ready | Experimental | x86_64 emulator validated; arm64-v8a device support incomplete |
+| Full Botan Packaging | Ready | Not supported | Not supported | Not stable in APK yet |
+| Hybrid Build (Win+WSL) | Not supported | N/A | N/A | Path handling fragile, not recommended |
 
-## 🐛 Troubleshooting
+**Legend:** Ready = validated and supported | Experimental = limited/partial support | Not supported = not a supported path | N/A = not applicable | Host op = runs on host, not on emulator/device
 
-| Issue | Cause | Solution |
-|-------|-------|----------|
-| `clang++: not found` | Wrong NDK prebuilts | Use NDK 25 with Linux prebuilts in WSL2 |
-| `CMake not found` | Missing dependencies | CMake is bundled in NDK, ensure NDK configured |
-| `JNI header mismatch` | Gradle/NDK version mismatch | Verify `ndkVersion` in build.gradle.kts matches actual NDK |
-| `APK size too large` | Debug symbols included | Use `gradle assembleRelease` for optimized build |
+## Build Notes
 
-## 📞 Support
+### Gradle project
 
-- **Architecture Questions**: See [DIRECTORY-STRUCTURE-GUIDE.md](DIRECTORY-STRUCTURE-GUIDE.md)
-- **Build Issues**: Check [gradle-build.log](gradle-build.log)
-- **Implementation Details**: See [PHASE-1-SESSION-SUMMARY.md](PHASE-1-SESSION-SUMMARY.md)
+The active Gradle modules are:
 
-## 📄 License
+- `:app`
+- `:android-app`
 
-See [LICENSE](LICENSE) file.
+### Android JNI library name
 
-## 📦 Dependencies
+The active Android JNI library currently loaded by Kotlin is:
 
-### Cryptographic Library
-- **Botan 2.19.1** - Cryptographic library for ECDSA signatures and X.509 certificate validation
-  - **License:** BSD-2-Clause (permissive, commercial-friendly)
-  - **Installation:**
-    ```bash
-    # Ubuntu/Debian
-    sudo apt-get install libbotan-2-dev
-    
-    # macOS (Homebrew)
-    brew install botan
-    ```
-  - **Verification:** `botan-config --version`
+- `v2x-jni` (the shared library `libv2x-jni.so` generated by the Android build)
 
-### Testing Framework
-- **Google Test 1.11.0** - C++ unit testing framework
-  - **Installation:** `sudo apt-get install libgtest-dev` (Ubuntu/Debian)
+Older references to `security-engine` or `libsecurity-engine.so` in historical docs should be treated as stale.
 
-### Build System Prerequisites
-- **CMake** 3.22+
-- **Make** or Ninja
-- **C++ Compiler** with C++17 support (GCC 11+, Clang 12+)
+## Known Documentation Drift
 
-See [docs/README-UPDATE-TEMPLATE.md](docs/README-UPDATE-TEMPLATE.md) for comprehensive dependency documentation and platform-specific instructions.
+The older documentation may still incorrectly state that:
 
-## 📜 Third-Party Licenses
+- `native-engine/` is future work or empty
+- `security-engine` is the active Android JNI library
+- Botan-backed Android packaging is already stable
+- the Windows-host + WSL-backend setup is a settled, reliable default
 
-This project uses open-source libraries under permissive licenses:
+Those assumptions are no longer accurate.
 
-| Library | Version | License | Attribution |
-|---------|---------|---------|-------------|
-| **Botan** | 2.19.1 | BSD-2-Clause | [botan.randombit.net](https://botan.randombit.net/) |
-| **Google Test** | 1.11.0 | BSD-3-Clause | [github.com/google/googletest](https://github.com/google/googletest) |
+## Troubleshooting Common Issues
 
-**Compliance:** Full license texts available in [THIRD-PARTY-LICENSES/](THIRD-PARTY-LICENSES/)
+### Windows/WSL Path Handling
 
-See [docs/BOTAN-LICENSING-GUIDE.md](docs/BOTAN-LICENSING-GUIDE.md) for detailed licensing strategy.
+**Problem:** Gradle fails with path resolution errors when using WSL tools from Windows.
 
----
+**Solution:** Use Linux/WSL terminal for all native engine work. Use Windows-based Android Studio or `gradlew.bat` only for Android Gradle tasks, not native CMake.
 
-**Last Updated**: March 7, 2026  
-**Current Phase**: 2/4 (Crypto Engine - Complete)  
-**Next Phase**: IEEE 1609.2 Message Formatting Decoder (Phase 3)
+### Native Tests Don't Run on Android
+
+**Problem:** CMake-built native tests fail when copied to Android device.
+
+**Solution:** Native tests are intentionally Linux/WSL-only. The minimal JNI wrapper (`v2x-jni`) provides Android validation only. For comprehensive testing, build and run natively on Linux/WSL.
+
+### NDK Compilation Issues
+
+**Problem:** `android-app` fails to build with NDK errors about missing includes.
+
+**Solution:**
+1. Verify `local.properties` has the correct pinned NDK path (`25.0.8775105`)
+2. Run `./gradlew clean` to clear build cache
+3. Check `native-engine/CMakeLists.txt` for Android-specific configuration
+
+### Botan Library Not Found in APK
+
+**Problem:** App crashes with `libbotan-2.so not found` at runtime.
+
+**Solution:** Full Botan packaging into the Android APK is not currently stable. Current Android builds use only the minimal JNI layer. For production Botan integration, this requires additional work (see `docs/PHASE-3-COER-LIBRARY-STRATEGY.md`).
+
+## Documentation & Resources
+
+For detailed technical information, see:
+
+- [ARCHITECTURE-DIAGRAMS.md](docs/ARCHITECTURE-DIAGRAMS.md) - System architecture overview
+- [PHASE-2-COMPLETION-REPORT.md](docs/PHASE-2-COMPLETION-REPORT.md) - Project status and completed work
+- [BOTAN-LICENSING-GUIDE.md](docs/BOTAN-LICENSING-GUIDE.md) - Botan integration and licensing
+- [MINIMAL-JNI-IMPLEMENTATION.md](docs/MINIMAL-JNI-IMPLEMENTATION.md) - JNI layer technical details
+- [PHASE-3-COER-LIBRARY-STRATEGY.md](docs/PHASE-3-COER-LIBRARY-STRATEGY.md) - Future roadmap and COER library plans
+- [native-engine/docs/](native-engine/docs/) - Native engine design and test vectors
+
+## Practical Summary
+
+The product goal has not changed much:
+
+- Android app
+- JNI bridge
+- native V2X engine
+
+The execution model has changed significantly:
+
+- less confidence in the original hybrid Windows/WSL workflow
+- more Linux-first native development
+- thinner Android JNI validation path
+- more need to keep documentation aligned with actual build behavior
