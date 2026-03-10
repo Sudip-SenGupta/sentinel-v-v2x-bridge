@@ -27,6 +27,12 @@ import org.junit.Assert.*
 @RunWith(AndroidJUnit4::class)
 class V2XJNITest {
     
+    @Test
+    fun testSimpleDummy() {
+        // Simplest possible test - just verify test framework works
+        assertTrue("Dummy test", true)
+    }
+    
     @Before
     fun setup() {
         // Native library automatically loaded by V2X object init block

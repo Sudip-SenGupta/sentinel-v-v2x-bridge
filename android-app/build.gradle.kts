@@ -11,6 +11,8 @@ android {
     defaultConfig {
         minSdk = 24
         
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        
         externalNativeBuild {
             cmake {
                 cppFlags("-std=c++17")
@@ -43,7 +45,7 @@ android {
     
     externalNativeBuild {
         cmake {
-            path = file("src/main/cpp/CMakeLists.txt")
+            path = file("../native-engine/CMakeLists.txt")
             version = "3.22.1"
         }
     }
