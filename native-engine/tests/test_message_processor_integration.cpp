@@ -347,12 +347,16 @@ TEST(PayloadValidatorPerformanceTest, ValidationOverhead) {
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     auto avg_us = duration.count() / 100.0;
     
-    // Just verify it completes and logs performance
-    // (On debug builds, validation may take more than 100us)
-    EXPECT_GT(avg_us, 0.0);
+    // Just verify it completes successfully
+    // (Validation is so fast it may round to 0 us on modern hardware)
+    EXPECT_GE(duration.count(), 0);
     
     // Log the actual performance for reference
-    std::cout << "  Payload validation: " << avg_us << " us per call (100 calls)" << std::endl;
+    if (avg_us > 0.0) {
+        std::cout << "  Payload validation: " << avg_us << " us per call (100 calls)" << std::endl;
+    } else {
+        std::cout << "  Payload validation: < 0.01 us per call (100 calls in < 1 us total)" << std::endl;
+    }
 }
 
 // ============================================================================

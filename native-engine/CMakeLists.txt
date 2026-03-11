@@ -10,6 +10,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(ANDROID)
     add_library(v2x-jni SHARED
         src/v2x_jni.cpp
+        src/v2x_coer_decoder.cpp
+        src/v2x_message_frame.cpp
+        src/v2x_jni_message_processor.cpp
     )
 
     target_include_directories(v2x-jni
@@ -35,7 +38,7 @@ if(ANDROID)
 
     message(STATUS "=== Sentinel V2X Android JNI Build ===")
     message(STATUS "ABI: ${ANDROID_ABI}")
-    message(STATUS "Target: v2x-jni (minimal, no Botan)")
+    message(STATUS "Target: v2x-jni (COER decoder + message processor, no Botan)")
     return()
 endif()
 
@@ -88,6 +91,7 @@ set(SOURCES
     src/v2x_coer_decoder.cpp
     src/v2x_payload_validator.cpp
     src/v2x_message_processor.cpp
+    src/v2x_message_frame.cpp
 )
 
 set(HEADERS
@@ -95,6 +99,7 @@ set(HEADERS
     include/v2x_coer_decoder.h
     include/v2x_payload_validator.h
     include/v2x_message_processor.h
+    include/v2x_structures.hpp
 )
 
 # ============================================================================

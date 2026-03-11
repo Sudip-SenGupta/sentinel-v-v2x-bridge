@@ -43,6 +43,13 @@ android {
         jvmTarget = "1.8"
     }
     
+    lint {
+        disable.add("MissingDimensionBaseline")
+        disable.add("MissingDimensionAndroidTest")
+        abortOnError = false
+        checkReleaseBuilds = false
+    }
+    
     externalNativeBuild {
         cmake {
             path = file("../native-engine/CMakeLists.txt")

@@ -29,3 +29,7 @@ local.properties
 # OS
 .DS_Store
 Thumbs.db
+build.log
+gradle_test.log
+test_output.txt
+test_run.txt

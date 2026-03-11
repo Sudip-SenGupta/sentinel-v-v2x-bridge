@@ -35,7 +35,7 @@ while [ -h "$PRG" ] ; do
     esac
 done
 SAVED="$(cd "$(dirname "$PRG")" && pwd)"
-APP_HOME="$(dirname "$SAVED")"
+APP_HOME="$SAVED"
 cd "$APP_HOME" || exit
 
 APP_NAME="Gradle"

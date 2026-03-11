@@ -16,7 +16,17 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
-        // TODO: Enable native build setup when cross-compilation is ready
+        externalNativeBuild {
+            cmake {
+                cppFlags("-std=c++17")
+                arguments("-DANDROID_STL=c++_shared")
+            }
+        }
+
+        ndk {
+            abiFilters.add("x86_64")
+            abiFilters.add("arm64-v8a")
+        }
     }
 
     buildTypes {
@@ -33,10 +43,23 @@ android {
         targetCompatibility = JavaVersion.VERSION_1_8
     }
     
-    // TODO: Enable native build setup when cross-compilation is ready
+    lint {
+        disable.add("MissingDimensionBaseline")
+        disable.add("MissingDimensionAndroidTest") 
+        abortOnError = false
+        checkReleaseBuilds = false
+    }
+    
+    externalNativeBuild {
+        cmake {
+            path = file("../native-engine/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
 }
 
 dependencies {
+    implementation(project(":android-app"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)

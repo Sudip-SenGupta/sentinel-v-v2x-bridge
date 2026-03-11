@@ -105,18 +105,107 @@ make
 
 ### For Android Development (Windows/Mac/Linux)
 
+#### Quick Start (Build → Deploy → Test)
 ```bash
-# Ensure local.properties is configured (see Prerequisites)
+# 1. Build APK (compiles Java + native C++ code)
+./gradlew :app:assembleDebug
 
-# Build Android app
-./gradlew :app:build
+# 2. Deploy to emulator
+adb install app/build/outputs/apk/debug/app-debug.apk
 
-# Build Android library
+# 3. Run instrumented tests
+./gradlew :android-app:connectedDebugAndroidTest
+
+# 4. Check test results
+adb logcat -d | grep "run finished"
+```
+
+#### Detailed Build Commands
+
+```bash
+# Build library module (produces .aar with native libs)
 ./gradlew :android-app:build
 
-# Run instrumented tests on emulator (x86_64 validated)
-# Exact validated class filter:
+# Build app module (produces .apk)
+./gradlew :app:assembleDebug
+
+# Combined build (both modules)
+./gradlew :app:build
+```
+
+#### Deployment Commands
+
+```bash
+# Install APK to connected emulator/device
+adb install app/build/outputs/apk/debug/app-debug.apk
+
+# Verify APK was created
+ls -lh app/build/outputs/apk/debug/app-debug.apk
+```
+
+#### Testing Commands
+
+```bash
+# Run all instrumented tests
+./gradlew :android-app:connectedDebugAndroidTest
+
+# Run with specific test class filter
 ./gradlew :android-app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.sentinel.v2x.V2XJNITest
+```
+
+#### Logging Commands
+
+```bash
+# Clear logs before testing
+adb logcat -c
+
+# View all logs
+adb logcat -d
+
+# View test results
+adb logcat -d | grep -E "run finished|PASSED|FAILED|TestRunner"
+
+# View V2X JNI logs
+adb logcat -d | grep "V2X-JNI"
+
+# View live logs (real-time)
+adb logcat | grep -E "V2X-JNI|TestRunner"
+
+# Last 100 lines
+adb logcat -d | tail -100
+```
+
+#### Complete Workflow Example
+```bash
+# Clear previous logs
+adb logcat -c
+
+# Build native + Java
+./gradlew :app:assembleDebug
+
+# Deploy
+adb install app/build/outputs/apk/debug/app-debug.apk
+
+# Run tests
+./gradlew :android-app:connectedDebugAndroidTest
+
+# Check results
+adb logcat -d | grep "run finished"
+adb logcat -d | grep "V2X-JNI"
+```
+
+#### Expected Test Results (Phase 5 - VALIDATED ✅)
+```
+I TestRunner: run finished: 8 tests, 0 failed, 0 ignored
+
+✅ testSimpleDummy
+✅ testNativeLibraryLoads
+✅ testProcessBatch
+✅ testProcessBSMMessage
+✅ testVersionFormatValid
+✅ testDetectFrameType
+✅ testGetVersion
+✅ testMultipleCalls
 ```
 
 ### For Full Environment Setup
