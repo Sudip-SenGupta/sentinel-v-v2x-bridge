@@ -1,6 +1,6 @@
 # Phase 3: Custom COER Library Specification
 
-**Date:** March 7, 2026  
+  
 **Decision:** Build custom lightweight COER decoder  
 **Target:** ~500-800 LOC, 4-week delivery, production-ready
 

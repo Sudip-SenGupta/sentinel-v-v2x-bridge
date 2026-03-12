@@ -1,16 +1,31 @@
 # Minimal JNI Implementation: Toolchain Validation
-**Phase 3 Week 2 → Phase 4 Bridging Strategy**
+**Phase 4 → Phase 5 Bridging Strategy**  
+**Status:** Phase 4 Complete ✅ | Phase 5 Expanded Implementation ✅
 
-## Executive Summary
+---
 
-Rather than generating full MessageProcessor JNI bindings now, we implement a **minimal proof-of-concept** that:
+## Note on Phase 5 (Current)
+This document describes the Phase 4 **minimal** JNI bridge strategy. In **Phase 5**, the JNI implementation has been **significantly expanded** to include:
+
+- ✅ Full message batch processing (multiple messages)
+- ✅ Complex struct marshalling (VehicleType enum, VehicleInfo nested class)
+- ✅ BasicSafetyMessage (BSM) creation with all fields
+- ✅ Frame type detection and message processing
+- ✅ 8 instrumented tests (all passing on Android emulator)
+- ✅ Production deployment on Android 14
+
+See [README.md - Android Development](../README.md#for-android-development-windowsmaclinux) for Phase 5 capabilities and command reference.
+
+---
+
+## Phase 4 Executive Summary
+
+Rather than generating full MessageProcessor JNI bindings without validation, Phase 4 implemented a **minimal proof-of-concept** that:
 
 1. **Validates the Android/JNI/CMake toolchain** (single function)
 2. **Documents future extension points** (commented method stubs)
 3. **Zero-couples to Phase 3 Week 2** (doesn't expose opaque byte arrays)
-4. **Defers meaningful interface to Phase 4** (when ASN.1 decoder provides content)
-
-**Rationale:** Full JNI binding without ASN.1 decoding would require Kotlin code to marshal raw COER/DER bytes, then marshal them back to C++ for actual processing—unnecessary and error-prone.
+4. **Defers full interface to Phase 5** (when message processing is integrated)
 
 ---
 

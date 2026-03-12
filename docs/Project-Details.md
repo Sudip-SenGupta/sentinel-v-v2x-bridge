@@ -1,6 +1,6 @@
 # Technical Specification: Sentinel-V V2X Bridge
 **Project Lead:** Sudip Dev  
-**Date:** March 2026  
+  
 **Version:** 2.0 (Complete Technical Specification - Architecture, Security, APIs, Build Config)
 
 ---
@@ -68,9 +68,10 @@ The **Sentinel-V** is a secure automotive middleware designed to bridge Android 
 ### Module Breakdown
 | Module | Technology | Responsibility | Status |
 | :--- | :--- | :--- | :--- |
-| **android-app** | Kotlin / Jetpack Compose | User Interface, Alerting, App Lifecycle. | ✅ Verified |
-| **native-engine** | C++17 / CMake / NDK 29 | IEEE 1609.2 signing & verification. | 🏗️ Staged |
-| **JNI Bridge** | C++ / JNI | Data serialization between JVM and Native. | 🏗️ Staged |
+| **app** | Kotlin / Jetpack Compose | Android Application, UI, App Lifecycle | ✅ Complete |
+| **android-app** | Kotlin / JNI / CMake | JNI Bridge, Native Library Integration | ✅ Complete (Phase 5) |
+| **native-engine** | C++17 / CMake / Botan | IEEE 1609.2 crypto engine, message processing | ✅ Complete (Phase 3 Week 2) |
+| **JNI Bridge** | C++ / JNI | Data serialization between JVM and Native | ✅ Complete (Phase 5) |
 
 ### Module Dependencies
 ```
@@ -185,119 +186,63 @@ The build was successfully stabilized after clearing the following hurdles:
 
 ---
 
-## 4. Current Project Status
-* **Build Execution:** 100% (All tasks completed - Kotlin + Native C++).
-* **Kotlin/Java Compilation:** ✅ Successful.
-* **JNI Bridge Interface:** ✅ Complete (`SecurityEngine.kt` with 6 external methods).
-* **C++ Native Implementation:** ✅ Complete (`SecurityEngine.cpp` with full JNI wrappers).
-* **CMake Integration:** ✅ Complete (Multi-ABI build configuration).
-* **Native Library Compilation:** ✅ Successful for both ARM64 and x86_64.
-* **Manifest Merging:** ✅ Successful.
-* **Asset Packaging:** ✅ Successful.
+## 4. Current Project Status (Phase 5 Complete)  
+**Overall Status:** ✅ COMPLETE - All 80 tests passing (Phases 1-5)
+
+### Phase Breakdown
+| Phase | Status | Key Metrics |
+|-------|--------|------------|
+| **Phase 1** | ✅ Complete | SHA-256 crypto engine (4/4 tests) |
+| **Phase 2** | ✅ Complete | ECDSA P-256 signature verification (10/10 tests) |
+| **Phase 3 Week 1** | ✅ Complete | IEEE 1609.2 COER decoder (31/31 tests) |
+| **Phase 3 Week 2** | ✅ Complete | DER validation + 4-stage processor (23/23 tests) |
+| **Phase 4** | ✅ Complete | Minimal JNI bridge, toolchain validation (4/4 tests) |
+| **Phase 5** | ✅ Complete | Full JNI integration, Android emulator (8/8 tests) |
+
+### Phase 5 Validation Results
+* **Build Execution:** ✅ 100% (Java + Native C++ compiled)
+* **Android App Module:** ✅ Complete with instrumented tests
+* **Native Engine:** ✅ Compiled for arm64-v8a and x86_64
+* **JNI Bridge:** ✅ VehicleType enum marshalling implemented
+* **Message Processing:** ✅ Batch processing validated (3 messages decoded)
+* **APK Generated:** ✅ app-debug.apk (7.6 MB with native libraries)
+* **Emulator Validation:** ✅ All 8 tests passing on Android 14 (x86_64)
+* **Build System:** ✅ Gradle wrapper fixed (APP_HOME bug resolved)
 
 ### Generated Artifacts
-* **Android App Module:** `android-app/build/outputs/aar/` (Library with native binaries)
-* **Native Libraries:**
-  - `libsecurity-engine.so` (ARM64 - 62KB) - ELF 64-bit ARM aarch64
-  - `libsecurity-engine.so` (x86_64 - 64KB) - ELF 64-bit x86-64
-* **Kotlin Artifacts:** `app/build/outputs/apk/debug/app-debug.apk`
 
-### Phase 1 Completion: JNI Bridge & Native Build ✅
-All components of Phase 1 successfully implemented and validated.
+**APK & Libraries (Phase 5):**
+- **APK:** `app/build/outputs/apk/debug/app-debug.apk` (7.6 MB)
+- **Native Libraries:** `libv2x-jni.so`
+  - ARM64 (`arm64-v8a/libv2x-jni.so`) - 62KB ELF 64-bit ARM aarch64
+  - x86_64 (`x86_64/libv2x-jni.so`) - 64KB ELF 64-bit x86-64
+- **AAR (Library):** `android-app/build/outputs/aar/android-app-debug.aar` (includes native libs)
 
----
-
-## 5. Phase 1 Completion: JNI Header Generation & Native Integration
-
-### Task 1: Kotlin JNI Interface ✅
-**File:** [android-app/src/main/kotlin/com/sentinel/v2x/bridge/SecurityEngine.kt](android-app/src/main/kotlin/com/sentinel/v2x/bridge/SecurityEngine.kt)
-
-**Deliverables:**
-- 6 external JNI method declarations
-- Proper byte array marshalling signatures
-- Certificate chain validation interface
-- Message parsing for IEEE 1609.2
-
-**Rationale:** Kotlin provides type-safe JNI bindings while maintaining Android standard library interoperability for coroutines and lifecycle management.
-
-### Task 2: C++ JNI Header Generation ✅
-**File:** [android-app/src/main/cpp/com_sentinel_v2x_bridge_SecurityEngine.h](android-app/src/main/cpp/com_sentinel_v2x_bridge_SecurityEngine.h)
-
-**Deliverables:**
-- Auto-generated header stubs matching Kotlin external methods
-- Proper JNI type signatures (jbyteArray, jobjectArray, jstring, etc.)
-- Function parameter documentation
-
-**Rationale:** Standard JNI header generation ensures type safety and proper calling conventions across the Kotlin-C++ boundary.
-
-### Task 3: C++ JNI Bridge Implementation ✅
-**File:** [android-app/src/main/cpp/SecurityEngine.cpp](android-app/src/main/cpp/SecurityEngine.cpp)
-
-**Deliverables:**
-- 6 JNI function implementations with full error handling
-- Bidirectional data marshalling (Kotlin ↔ C++)
-- Java byte array ↔ std::vector<uint8_t> conversion
-- Exception safety with try-catch blocks
-- Android logging integration (liblog.so)
-- Placeholder V2X security engine class for future crypto implementation
-
-**Lines of Code:** ~310 lines of production C++17 code
-
-**Rationale:** JNI implementation layer isolates native code concerns while providing clean abstraction for crypto operations to be added in Phase 2.
-
-### Task 4: CMake Build Configuration ✅
-**File:** [android-app/src/main/cpp/CMakeLists.txt](android-app/src/main/cpp/CMakeLists.txt)
-
-**Deliverables:**
-- NDK-aware CMake configuration (v3.22.1)
-- Multi-ABI support (arm64-v8a, x86_64)
-- Android-specific compiler flags and optimization options
-- Library linking (liblog.so, android.so)
-- Debug and Release build configurations
-
-**Rationale:** CMake provides cross-platform, NDK-compatible build orchestration that integrates seamlessly with Android Gradle plugin.
-
-### Task 5: Gradle Integration ✅
-**Updated Files:** 
-- [android-app/build.gradle.kts](android-app/build.gradle.kts)
-- [app/build.gradle.kts](app/build.gradle.kts)
-
-**Changes:**
-- Enabled `externalNativeBuild` with CMake
-- Configured NDK version and ABI filters
-- Set C++17 compiler flags and STL settings
-- Updated to NDK 25 (available with Linux prebuilts)
-
-**Rationale:** Gradle externalNativeBuild seamlessly bridges Kotlin compilation with C++ compilation in a single build workflow.
-
-### Task 6: NDK Setup in WSL2 ✅
-**Configuration:** Download fresh NDK 25 to WSL2
-
-**Previous Approach (FAILED):**
-- ❌ Used Windows NDK 29 from `/mnt/c/...`
-- ❌ Windows NDK only had Windows prebuilts (no linux-x86_64)
-- ❌ CMake failed: "clang++: not found"
-
-**Adopted Approach (SUCCESS):**
-- ✅ Downloaded NDK 25 Linux package to `/home/sudip_dev/Android/Sdk/ndk/android-ndk-r25`
-- ✅ Extracted to native WSL2 filesystem
-- ✅ Verified clang++ availability: `Android (8490178) clang version 14.0.6`
-- ✅ Configured Gradle to use WSL2 NDK via `local.properties`
-
-**Updated Configuration:**
-```properties
-sdk.dir=/mnt/c/Users/SenGuptaSudip/AppData/Local/Android/Sdk
-ndk.dir=/home/sudip_dev/Android/Sdk/ndk/android-ndk-r25
+**Test Results:**
+```
+Run: 8 tests
+Passed: 8
+Failed: 0
+Ignored: 0
+Status: BUILD SUCCESS
 ```
 
-**Rationale:** Respects hybrid strategy - NDK in WSL2 ensures Linux-native compilation while SDK remains in Windows for GPU-accelerated emulator support. This resolves cross-filesystem compatibility issues.
-
-### Task 7: Native Compilation Validation ✅
-**Build Test:**
+### Quick Start Commands (Phase 5)
 ```bash
-cd ~/sentinel-v-v2x-bridge
-/tmp/gradle-8.2/bin/gradle android-app:assembleDebug
+# Build native + Java
+./gradlew :app:assembleDebug
+
+# Deploy
+adb install app/build/outputs/apk/debug/app-debug.apk
+
+# Test  
+./gradlew :android-app:connectedDebugAndroidTest
+
+# Check results
+adb logcat -d | grep "run finished"
 ```
+
+See [README.md - Android Development](../README.md#for-android-development-windowsmaclinux) for full details.
 
 **Results:**
 - **Build Time:** 5 seconds
@@ -553,7 +498,7 @@ adb logcat | grep -i "SecurityEngine\|JNI"
 * **OS:** Windows 11 Pro / Ubuntu 22.04 LTS (WSL2)
 * **IDE:** Android Studio Ladybug (2024.2.1)
 * **Build Tooling:** Gradle 8.2 / CMake 3.22.1 / NDK 25 (r25)
-* **Last Updated:** March 6, 2026
+
 * **Phase 1 Status:** ✅ COMPLETE - JNI Bridge & Native Build
 * **Phase 2 Status:** 🚀 IN PROGRESS - Crypto Implementation
 * **Documentation Completeness:** 100% (Architecture, Security, APIs, Config, Workflow, Testing, Troubleshooting)
