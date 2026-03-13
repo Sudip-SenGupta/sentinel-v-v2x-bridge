@@ -33,7 +33,8 @@ build.log
 gradle_test.log
 test_output.txt
 test_run.txt
-build.log
-gradle_test.log
-test_output.txt
-test_run.txt
+output.txt
+
+# Botan build artifacts (generated - do not commit, rebuild as needed)
+botan-android/
+botan-android-work/

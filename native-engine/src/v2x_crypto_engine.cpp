@@ -31,32 +31,66 @@
     #define LOGD(...) do { std::cout << "[DEBUG] " << std::string(__VA_ARGS__) << std::endl; } while(0)
 #endif
 
-#include "v2x_crypto_engine.h"
+namespace {
 
-#include <botan/botan.h>
-#include <botan/hash.h>
-#include <botan/ecdsa.h>
-#include <botan/x509cert.h>
-#include <botan/auto_rng.h>
+std::vector<uint8_t> encode_der_length(size_t length) {
+    if (length <= 0x7F) {
+        return {static_cast<uint8_t>(length)};
+    }
 
-#include <iostream>
-#include <ctime>
-#include <sstream>
-#include <iomanip>
-#include <chrono>
+    std::vector<uint8_t> bytes;
+    while (length > 0) {
+        bytes.insert(bytes.begin(), static_cast<uint8_t>(length & 0xFF));
+        length >>= 8;
+    }
 
-// Cross-platform logging macros
-#ifdef __ANDROID__
-    #include <android/log.h>
-    #define LOG_TAG "V2XCryptoEngine"
-    #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
-    #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
-    #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
-#else
-    #define LOGI(fmt, ...) do { printf("[INFO] " fmt "\n", ##__VA_ARGS__); } while(0)
-    #define LOGE(fmt, ...) do { fprintf(stderr, "[ERROR] " fmt "\n", ##__VA_ARGS__); } while(0)
-    #define LOGD(fmt, ...) do { printf("[DEBUG] " fmt "\n", ##__VA_ARGS__); } while(0)
-#endif
+    std::vector<uint8_t> encoded;
+    encoded.push_back(static_cast<uint8_t>(0x80 | bytes.size()));
+    encoded.insert(encoded.end(), bytes.begin(), bytes.end());
+    return encoded;
+}
+
+std::vector<uint8_t> to_der_integer_component(const uint8_t* begin, size_t length) {
+    while (length > 1 && *begin == 0x00) {
+        ++begin;
+        --length;
+    }
+
+    std::vector<uint8_t> component(begin, begin + length);
+    if (!component.empty() && (component.front() & 0x80) != 0) {
+        component.insert(component.begin(), 0x00);
+    }
+    return component;
+}
+
+std::vector<uint8_t> ieee1363_p256_to_der(const std::vector<uint8_t>& signature) {
+    if (signature.size() != 64) {
+        return {};
+    }
+
+    auto r = to_der_integer_component(signature.data(), 32);
+    auto s = to_der_integer_component(signature.data() + 32, 32);
+
+    std::vector<uint8_t> body;
+    body.push_back(0x02);
+    auto r_len = encode_der_length(r.size());
+    body.insert(body.end(), r_len.begin(), r_len.end());
+    body.insert(body.end(), r.begin(), r.end());
+
+    body.push_back(0x02);
+    auto s_len = encode_der_length(s.size());
+    body.insert(body.end(), s_len.begin(), s_len.end());
+    body.insert(body.end(), s.begin(), s.end());
+
+    std::vector<uint8_t> der;
+    der.push_back(0x30);
+    auto seq_len = encode_der_length(body.size());
+    der.insert(der.end(), seq_len.begin(), seq_len.end());
+    der.insert(der.end(), body.begin(), body.end());
+    return der;
+}
+
+}  // namespace
 
 namespace sentinel {
 namespace v2x {
@@ -120,30 +154,53 @@ SignatureVerificationResult V2XCryptoEngine::verify_ecdsa_signature(
     SignatureVerificationResult result{false, "", "", 0};
     
     try {
-        LOGD("Verifying ECDSA signature (msg: %zu, sig: %zu, key: %zu bytes)",
-             message.size(), signature.size(), public_key.size());
+        LOGD("Verifying ECDSA signature (msg: %zu, sig: %zu bytes, sig[0]=0x%02x, key: %zu bytes)",
+             message.size(), signature.size(), signature.size() > 0 ? signature[0] : 0, public_key.size());
         
         // Load the public key from DER
-        Botan::DataSource_Memory key_ds(public_key.data(), public_key.size());
-        auto pk = Botan::X509::load_key(key_ds);
-        
-        // Create ECDSA verifier with SHA-256
-        Botan::PK_Verifier verifier(*pk, "ECDSA(SHA-256)");
-        
-        // Verify signature
-        result.valid = verifier.verify_message(message.data(), message.size(),
-                                               signature.data(), signature.size());
-        result.algorithm = "ECDSA(SHA-256)";
-        
-        if (result.valid) {
-            LOGI("ECDSA signature verification successful");
-        } else {
-            LOGD("ECDSA signature verification failed - signature invalid");
-            result.error_message = "Signature verification failed";
+        try {
+            Botan::DataSource_Memory key_ds(public_key.data(), public_key.size());
+            auto pk = Botan::X509::load_key(key_ds);
+            LOGD("Public key loaded successfully from X.509 DER");
+            
+            // Create ECDSA verifier with SHA-256
+            // Botan uses EMSA1 (PSS with SHA-256) for ECDSA signature verification
+            Botan::PK_Verifier verifier(*pk, "EMSA1(SHA-256)");
+            
+            // Try DER signature first (most common)
+            LOGD("Attempting DER signature verification (sig size: %zu)", signature.size());
+            result.valid = verifier.verify_message(message.data(), message.size(),
+                                                signature.data(), signature.size());
+            
+            // If DER failed but signature is 64 bytes (P1363 format), try conversion
+            if (!result.valid && signature.size() == 64) {
+                LOGD("DER verification failed with 64-byte signature. Trying P1363 conversion...");
+                auto der_signature = ieee1363_p256_to_der(signature);
+                if (!der_signature.empty()) {
+                    LOGD("Converted P1363 to DER (%zu bytes), retrying verification", der_signature.size());
+                    result.valid = verifier.verify_message(message.data(), message.size(),
+                                                        der_signature.data(), der_signature.size());
+                    if (result.valid) {
+                        LOGD("P1363 conversion successful!");
+                    }
+                }
+            }
+            
+            result.algorithm = "EMSA1(SHA-256)";
+            
+            if (result.valid) {
+                LOGI("ECDSA signature verification successful");
+            } else {
+                LOGE("ECDSA signature verification failed (all attempts)");
+                result.error_message = "Signature verification failed";
+            }
+        } catch (const std::exception& key_error) {
+            LOGE("Failed to load/process public key: %s", key_error.what());
+            result.error_message = std::string("Key loading failed: ") + key_error.what();
         }
         
     } catch (const std::exception& e) {
-        LOGE("ECDSA verification error: %s", e.what());
+        LOGE("ECDSA verification exception: %s", e.what());
         result.valid = false;
         result.error_message = e.what();
     }
