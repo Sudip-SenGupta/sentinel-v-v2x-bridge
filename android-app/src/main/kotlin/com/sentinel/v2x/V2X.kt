@@ -100,7 +100,68 @@ object V2X {
     external fun processBatch(coerMessages: List<ByteArray>): List<DecodedV2XMessage>
 
     // ========================================================================
-    // Future Methods (Phase 4 & Beyond)
+    // Phase 6A: Cryptographic Operations (On-Device)
+    // ========================================================================
+
+    /**
+     * Initialize crypto engine with Botan
+     *
+     * Must be called before any crypto operations
+     * @return true if init successful, false otherwise
+     */
+    external fun cryptoInitialize(): Boolean
+
+    /**
+     * Compute SHA-256 hash of data
+     *
+     * @param data Input bytes to hash
+     * @return 32-byte SHA-256 hash
+     */
+    external fun sha256Hash(data: ByteArray): ByteArray
+
+    /**
+     * Compute SHA-256 hash and return as hex string
+     *
+     * @param data Input bytes to hash
+     * @return Hex-encoded hash (64 characters)
+     */
+    external fun sha256Hex(data: ByteArray): String
+
+    /**
+     * Verify ECDSA(SHA-256) signature
+     *
+     * @param message The message that was signed
+     * @param signature The ECDSA signature (typically 64 bytes for P-256)
+     * @param publicKey The public key in DER format
+     * @return true if signature is valid, false otherwise
+     */
+    external fun verifySignature(message: ByteArray, signature: ByteArray, publicKey: ByteArray): Boolean
+
+    /**
+     * Check if a certificate is valid
+     *
+     * @param certDER Certificate in DER format
+     * @return true if certificate is valid
+     */
+    external fun isValidCertificate(certDER: ByteArray): Boolean
+
+    /**
+     * Validate a certificate chain
+     *
+     * @param certificates Array of certificates in DER format (issuer first, root last)
+     * @return true if chain is valid
+     */
+    external fun validateCertificateChain(certificates: Array<ByteArray>): Boolean
+
+    /**
+     * Get Botan cryptographic library version
+     *
+     * @return Version string (e.g., "Botan 2.19.1 ...")
+     */
+    external fun getCryptoBotanVersion(): String
+
+    // ========================================================================
+    // Future Methods (Phase 7+)
     // ========================================================================
 
 }

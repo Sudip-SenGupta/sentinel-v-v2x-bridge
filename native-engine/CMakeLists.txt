@@ -5,20 +5,33 @@ project(sentinel-engine VERSION 1.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Android instrumented tests currently validate only the minimal JNI surface.
-# Build a standalone JNI library with no Botan dependency so it loads on-device.
+# Android JNI with Phase 6A: Botan integration for on-device crypto
 if(ANDROID)
     add_library(v2x-jni SHARED
         src/v2x_jni.cpp
         src/v2x_coer_decoder.cpp
         src/v2x_message_frame.cpp
         src/v2x_jni_message_processor.cpp
+        src/v2x_crypto_engine.cpp
+        src/v2x_jni_crypto.cpp
     )
 
     target_include_directories(v2x-jni
         PRIVATE
             ${CMAKE_CURRENT_SOURCE_DIR}/include
     )
+
+    # Phase 6A: Link pre-built Botan for Android
+    set(BOTAN_ANDROID_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../botan-android/${ANDROID_ABI}")
+    
+    if(EXISTS "${BOTAN_ANDROID_ROOT}/lib/libbotan-2.a")
+        message(STATUS "Found pre-built Botan at: ${BOTAN_ANDROID_ROOT}")
+        target_include_directories(v2x-jni PRIVATE "${BOTAN_ANDROID_ROOT}/include")
+        target_link_libraries(v2x-jni PRIVATE "${BOTAN_ANDROID_ROOT}/lib/libbotan-2.a")
+    else()
+        message(WARNING "Botan not found at ${BOTAN_ANDROID_ROOT}")
+        message(WARNING "Build with: scripts/build-botan-android.sh")
+    endif()
 
     target_link_libraries(v2x-jni
         PRIVATE
@@ -36,9 +49,10 @@ if(ANDROID)
 
     target_compile_definitions(v2x-jni PRIVATE __ANDROID__=1)
 
-    message(STATUS "=== Sentinel V2X Android JNI Build ===")
+    message(STATUS "=== Sentinel V2X Android JNI Build (Phase 6A) ===")
     message(STATUS "ABI: ${ANDROID_ABI}")
-    message(STATUS "Target: v2x-jni (COER decoder + message processor, no Botan)")
+    message(STATUS "Target: v2x-jni (COER decoder + message processor + crypto engine)")
+    message(STATUS "Botan: ${BOTAN_ANDROID_ROOT}")
     return()
 endif()
 

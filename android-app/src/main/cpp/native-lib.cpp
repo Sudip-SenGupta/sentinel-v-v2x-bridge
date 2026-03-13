@@ -1,6 +1,8 @@
 #include <jni.h>
 #include <string>
-#include "SecurityEngine.h" // Your C++ Logic
+
+// NOTE: This file is deprecated. Active JNI implementation is in native-engine/src/v2x_jni_message_processor.cpp
+// and native-engine/src/v2x_jni_crypto.cpp (Phase 6A)
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_sudip_sentinel_SecurityManager_getSecurityStatus(
@@ -8,6 +10,6 @@ Java_com_sudip_sentinel_SecurityManager_getSecurityStatus(
         jobject /* this */) {
     
     // Call your high-level C++ security logic here
-    std::string status = "AES-256 Enabled | Hardware-Backed Key Active";
+    std::string status = "Phase 6A: AES-256 | ECDSA | On-Device Crypto via Botan";
     return env->NewStringUTF(status.c_str());
 }
