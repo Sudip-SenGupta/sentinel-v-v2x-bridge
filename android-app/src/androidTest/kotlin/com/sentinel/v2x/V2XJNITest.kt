@@ -230,6 +230,78 @@ class V2XJNITest {
     }
 
     @Test
+    fun testWrongTrustedRootRejected() {
+        val generator = V2XSignatureGenerator()
+        val chain = generator.createCertificateChain(3)
+        val otherChain = generator.createCertificateChain(3)
+        val encodedChain = chain.asReversed().map { it.first.encoded }.toTypedArray()
+
+        assertTrue("Different trusted root should initialize", V2X.initializeWithRootCA(otherChain.first().first.encoded))
+        assertFalse("Valid chain should be rejected when anchored to the wrong root", V2X.validateCertificateChain(encodedChain))
+    }
+
+    @Test
+    fun testNonCAIntermediateRejected() {
+        val generator = V2XSignatureGenerator()
+        val chain = generator.createCertificateChain(depth = 3, intermediateIsCa = false)
+        val encodedChain = chain.asReversed().map { it.first.encoded }.toTypedArray()
+
+        assertTrue("Trusted root should initialize", V2X.initializeWithRootCA(chain.first().first.encoded))
+        assertFalse("Intermediate certificate without CA privileges should be rejected", V2X.validateCertificateChain(encodedChain))
+    }
+
+    @Test
+    fun testExpiredLeafCertificateRejected() {
+        val generator = V2XSignatureGenerator()
+        val chain = generator.createCertificateChain(
+            depth = 3,
+            leafNotBeforeOffsetMillis = -2L * 24L * 60L * 60L * 1000L,
+            leafNotAfterOffsetMillis = -1L * 24L * 60L * 60L * 1000L
+        )
+        val encodedChain = chain.asReversed().map { it.first.encoded }.toTypedArray()
+
+        assertTrue("Trusted root should initialize", V2X.initializeWithRootCA(chain.first().first.encoded))
+        assertFalse("Expired leaf certificate should be rejected", V2X.validateCertificateChain(encodedChain))
+    }
+
+    @Test
+    fun testNotYetValidLeafCertificateRejected() {
+        val generator = V2XSignatureGenerator()
+        val chain = generator.createCertificateChain(
+            depth = 3,
+            leafNotBeforeOffsetMillis = 24L * 60L * 60L * 1000L,
+            leafNotAfterOffsetMillis = 2L * 24L * 60L * 60L * 1000L
+        )
+        val encodedChain = chain.asReversed().map { it.first.encoded }.toTypedArray()
+
+        assertTrue("Trusted root should initialize", V2X.initializeWithRootCA(chain.first().first.encoded))
+        assertFalse("Not-yet-valid leaf certificate should be rejected", V2X.validateCertificateChain(encodedChain))
+    }
+
+    @Test
+    fun testLeafCACertificateRejected() {
+        val generator = V2XSignatureGenerator()
+        val chain = generator.createCertificateChain(depth = 3, leafIsCa = true)
+        val encodedChain = chain.asReversed().map { it.first.encoded }.toTypedArray()
+
+        assertTrue("Trusted root should initialize", V2X.initializeWithRootCA(chain.first().first.encoded))
+        assertFalse("Leaf certificate marked as CA should be rejected", V2X.validateCertificateChain(encodedChain))
+    }
+
+    @Test
+    fun testLeafWithoutDigitalSignatureUsageRejected() {
+        val generator = V2XSignatureGenerator()
+        val chain = generator.createCertificateChain(
+            depth = 3,
+            leafKeyUsageBitsOverride = org.bouncycastle.asn1.x509.KeyUsage.keyEncipherment
+        )
+        val encodedChain = chain.asReversed().map { it.first.encoded }.toTypedArray()
+
+        assertTrue("Trusted root should initialize", V2X.initializeWithRootCA(chain.first().first.encoded))
+        assertFalse("Leaf certificate without digitalSignature usage should be rejected", V2X.validateCertificateChain(encodedChain))
+    }
+
+    @Test
     fun testClearTrustedRootCAResetsValidationState() {
         val generator = V2XSignatureGenerator()
         val chain = generator.createCertificateChain(3)

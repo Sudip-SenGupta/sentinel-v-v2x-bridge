@@ -90,12 +90,15 @@ class V2XSignatureGenerator {
         issuerCert: X509Certificate?,
         issuerPrivateKey: PrivateKey,
         validity: Int,
-        isCa: Boolean
+        isCa: Boolean,
+        keyUsageBitsOverride: Int? = null,
+        notBeforeOffsetMillis: Long = -60_000L,
+        notAfterOffsetMillis: Long? = null
     ): X509Certificate {
         val issuer = issuerCert?.subjectX500Principal ?: subject
         val now = System.currentTimeMillis()
-        val notBefore = Date(now - 60_000L)
-        val notAfter = Date(now + validity.toLong() * 24L * 60L * 60L * 1000L)
+        val notBefore = Date(now + notBeforeOffsetMillis)
+        val notAfter = Date(now + (notAfterOffsetMillis ?: validity.toLong() * 24L * 60L * 60L * 1000L))
         val serial = BigInteger(160, random).abs().max(BigInteger.ONE)
         val extensions = JcaX509ExtensionUtils()
 
@@ -109,7 +112,7 @@ class V2XSignatureGenerator {
         )
 
         builder.addExtension(Extension.basicConstraints, true, BasicConstraints(isCa))
-        val keyUsageBits = if (isCa) {
+        val keyUsageBits = keyUsageBitsOverride ?: if (isCa) {
             KeyUsage.keyCertSign or KeyUsage.cRLSign or KeyUsage.digitalSignature
         } else {
             KeyUsage.digitalSignature
@@ -233,14 +236,38 @@ class V2XSignatureGenerator {
      * Depth 3: root CA -> intermediate CA -> leaf signer
      */
     fun createCertificateChain(depth: Int = 1): List<Pair<X509Certificate, PrivateKey>> {
+        return createCertificateChain(
+            depth = depth,
+            leafIsCa = false,
+            leafKeyUsageBitsOverride = null,
+            intermediateIsCa = true,
+            leafNotBeforeOffsetMillis = -60_000L,
+            leafNotAfterOffsetMillis = null
+        )
+    }
+
+    fun createCertificateChain(
+        depth: Int = 1,
+        leafIsCa: Boolean = false,
+        leafKeyUsageBitsOverride: Int? = null,
+        intermediateIsCa: Boolean = true,
+        leafNotBeforeOffsetMillis: Long = -60_000L,
+        leafNotAfterOffsetMillis: Long? = null
+    ): List<Pair<X509Certificate, PrivateKey>> {
         require(depth in 1..3) { "Chain depth must be 1-3, got $depth" }
 
         if (depth == 1) {
             val leafKeyPair = generateKeyPair()
-            val leafCert = createSelfSignedCertificate(
-                subject = "CN=Custom Leaf Signer, O=Sentinel V2X, C=US",
-                keyPair = leafKeyPair,
-                validity = VALIDITY_DAYS
+            val leafCert = buildCertificate(
+                subject = X500Principal("CN=Custom Leaf Signer, O=Sentinel V2X, C=US"),
+                subjectKeyPair = leafKeyPair,
+                issuerCert = null,
+                issuerPrivateKey = leafKeyPair.private,
+                validity = VALIDITY_DAYS,
+                isCa = leafIsCa,
+                keyUsageBitsOverride = leafKeyUsageBitsOverride,
+                notBeforeOffsetMillis = leafNotBeforeOffsetMillis,
+                notAfterOffsetMillis = leafNotAfterOffsetMillis
             )
             return listOf(leafCert to leafKeyPair.private)
         }
@@ -263,7 +290,10 @@ class V2XSignatureGenerator {
                 issuerCert = rootCert,
                 issuerPrivateKey = rootKeyPair.private,
                 validity = VALIDITY_DAYS,
-                isCa = false
+                isCa = leafIsCa,
+                keyUsageBitsOverride = leafKeyUsageBitsOverride,
+                notBeforeOffsetMillis = leafNotBeforeOffsetMillis,
+                notAfterOffsetMillis = leafNotAfterOffsetMillis
             )
             return listOf(
                 rootCert to rootKeyPair.private,
@@ -278,7 +308,7 @@ class V2XSignatureGenerator {
             issuerCert = rootCert,
             issuerPrivateKey = rootKeyPair.private,
             validity = VALIDITY_DAYS,
-            isCa = true
+            isCa = intermediateIsCa
         )
 
         val leafKeyPair = generateKeyPair()
@@ -288,7 +318,10 @@ class V2XSignatureGenerator {
             issuerCert = intermediateCert,
             issuerPrivateKey = intermediateKeyPair.private,
             validity = VALIDITY_DAYS,
-            isCa = false
+            isCa = leafIsCa,
+            keyUsageBitsOverride = leafKeyUsageBitsOverride,
+            notBeforeOffsetMillis = leafNotBeforeOffsetMillis,
+            notAfterOffsetMillis = leafNotAfterOffsetMillis
         )
 
         return listOf(

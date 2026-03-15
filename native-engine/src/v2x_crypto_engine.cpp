@@ -323,6 +323,18 @@ bool V2XCryptoEngine::validate_certificate_chain(
             return false;
         }
 
+        const auto& leaf_cert = parsed_chain.front();
+        if (leaf_cert.is_CA_cert()) {
+            LOGE("Certificate chain validation failed: leaf certificate must not be a CA");
+            return false;
+        }
+
+        if (leaf_cert.constraints() == Botan::NO_CONSTRAINTS ||
+            !leaf_cert.allowed_usage(Botan::DIGITAL_SIGNATURE)) {
+            LOGE("Certificate chain validation failed: leaf certificate must allow digitalSignature");
+            return false;
+        }
+
         for (size_t i = 0; i + 1 < parsed_chain.size(); ++i) {
             if (!(parsed_chain[i].issuer_dn() == parsed_chain[i + 1].subject_dn())) {
                 LOGE("Certificate chain validation failed: certificate %zu issuer does not match certificate %zu subject", i, i + 1);
