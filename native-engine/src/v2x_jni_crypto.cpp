@@ -50,6 +50,51 @@ Java_com_sentinel_v2x_V2X_cryptoInitialize(JNIEnv* env, jclass clazz) {
     }
 }
 
+/**
+ * Java: V2X.initializeWithRootCA(rootCaDER: ByteArray): Boolean
+ * Loads the trusted root CA used for certificate-chain validation.
+ */
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_sentinel_v2x_V2X_initializeWithRootCA(JNIEnv* env, jclass clazz, jbyteArray rootCaDER) {
+    try {
+        if (!g_crypto_engine) {
+            Java_com_sentinel_v2x_V2X_cryptoInitialize(env, clazz);
+        }
+
+        jsize len = env->GetArrayLength(rootCaDER);
+        jbyte* bytes = env->GetByteArrayElements(rootCaDER, nullptr);
+        std::vector<uint8_t> root_data(bytes, bytes + len);
+        env->ReleaseByteArrayElements(rootCaDER, bytes, JNI_ABORT);
+
+        const bool initialized = g_crypto_engine->initialize_with_root_ca(root_data);
+        LOGI("Trusted root CA initialization: %s", initialized ? "SUCCESS" : "FAILURE");
+        return initialized ? JNI_TRUE : JNI_FALSE;
+    } catch (const std::exception& e) {
+        LOGE("Trusted root CA initialization error: %s", e.what());
+        return JNI_FALSE;
+    }
+}
+
+/**
+ * Java: V2X.clearTrustedRootCA(): Boolean
+ * Clears the configured trusted root CA used for certificate-chain validation.
+ */
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_sentinel_v2x_V2X_clearTrustedRootCA(JNIEnv* env, jclass clazz) {
+    try {
+        if (!g_crypto_engine) {
+            Java_com_sentinel_v2x_V2X_cryptoInitialize(env, clazz);
+        }
+
+        g_crypto_engine->clear_trusted_root_ca();
+        LOGI("Trusted root CA cleared");
+        return JNI_TRUE;
+    } catch (const std::exception& e) {
+        LOGE("Trusted root CA clear error: %s", e.what());
+        return JNI_FALSE;
+    }
+}
+
 // ============================================================================
 // JNI: SHA-256 Hashing
 // ============================================================================
@@ -190,7 +235,7 @@ Java_com_sentinel_v2x_V2X_isValidCertificate(JNIEnv* env, jclass clazz, jbyteArr
         std::vector<uint8_t> cert_data(bytes, bytes + len);
         env->ReleaseByteArrayElements(certDER, bytes, JNI_ABORT);
 
-        bool valid = g_crypto_engine->is_certificate_valid(cert_data, 0);
+        bool valid = g_crypto_engine->is_certificate_time_valid(cert_data, 0);
 
         LOGD("Certificate validity check: %s", valid ? "VALID" : "INVALID");
         return valid ? JNI_TRUE : JNI_FALSE;

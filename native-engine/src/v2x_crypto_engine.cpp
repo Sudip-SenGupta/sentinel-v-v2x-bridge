@@ -8,6 +8,8 @@
 #include <botan/x509_ca.h>
 #include <botan/der_enc.h>
 #include <botan/asn1_time.h>
+#include <botan/certstor.h>
+#include <botan/x509path.h>
 #include <botan/auto_rng.h>
 #include <botan/pem.h>
 
@@ -16,6 +18,7 @@
 #include <iomanip>
 #include <chrono>
 #include <iostream>
+#include <mutex>
 
 // Android logging (available only when building with NDK)
 #ifdef __ANDROID__
@@ -90,6 +93,17 @@ std::vector<uint8_t> ieee1363_p256_to_der(const std::vector<uint8_t>& signature)
     return der;
 }
 
+std::mutex g_trusted_root_mutex;
+std::vector<uint8_t> g_trusted_root_der;
+
+std::chrono::system_clock::time_point resolve_validation_time(uint64_t current_time_unix) {
+    if(current_time_unix == 0) {
+        return std::chrono::system_clock::now();
+    }
+
+    return std::chrono::system_clock::from_time_t(static_cast<std::time_t>(current_time_unix));
+}
+
 }  // namespace
 
 namespace sentinel {
@@ -102,6 +116,13 @@ namespace v2x {
 class V2XCryptoEngine::Impl {
 public:
     Impl() : rng_(std::make_unique<Botan::AutoSeeded_RNG>()) {
+        {
+            std::lock_guard<std::mutex> lock(g_trusted_root_mutex);
+            if(!g_trusted_root_der.empty()) {
+                Botan::DataSource_Memory ds(g_trusted_root_der.data(), g_trusted_root_der.size());
+                root_ca_ = std::make_unique<Botan::X509_Certificate>(ds);
+            }
+        }
         LOGI("V2XCryptoEngine initialized with Botan %s", Botan::version_cstr());
     }
     
@@ -127,15 +148,19 @@ bool V2XCryptoEngine::initialize_with_root_ca(const std::vector<uint8_t>& root_c
     try {
         LOGI("Initializing with root CA (size: %zu bytes)", root_ca_der.size());
         
-        // Load and validate root CA certificate
         Botan::DataSource_Memory ds(root_ca_der.data(), root_ca_der.size());
-        pimpl_->root_ca_ = std::make_unique<Botan::X509_Certificate>(ds);
+        auto root_ca = std::make_unique<Botan::X509_Certificate>(ds);
         
-        // Verify it's a CA certificate
-        if (!pimpl_->root_ca_->is_CA_cert()) {
-            LOGE("Provided certificate is not a CA certificate");
+        if (!root_ca->is_CA_cert() && !root_ca->is_self_signed()) {
+            LOGE("Provided certificate is neither a CA certificate nor a self-signed trust anchor");
             return false;
         }
+
+        {
+            std::lock_guard<std::mutex> lock(g_trusted_root_mutex);
+            g_trusted_root_der = root_ca_der;
+        }
+        pimpl_->root_ca_ = std::move(root_ca);
         
         LOGI("Root CA initialized successfully");
         return true;
@@ -269,7 +294,7 @@ CertificateInfo V2XCryptoEngine::parse_certificate(const std::vector<uint8_t>& c
 
 bool V2XCryptoEngine::validate_certificate_chain(
     const std::vector<std::vector<uint8_t>>& certificate_chain,
-    uint64_t /*current_time_unix*/) {
+    uint64_t current_time_unix) {
     
     try {
         if (certificate_chain.empty()) {
@@ -278,20 +303,72 @@ bool V2XCryptoEngine::validate_certificate_chain(
         }
         
         LOGI("Validating certificate chain (%zu certificates)", certificate_chain.size());
-        
-        // Parse and validate each certificate
+
+        std::vector<Botan::X509_Certificate> parsed_chain;
+        parsed_chain.reserve(certificate_chain.size());
+
         for (size_t i = 0; i < certificate_chain.size(); ++i) {
-            Botan::DataSource_Memory ds(certificate_chain[i].data(), 
-                                       certificate_chain[i].size());
             try {
-                Botan::X509_Certificate cert(ds);
+                Botan::DataSource_Memory ds(certificate_chain[i].data(), certificate_chain[i].size());
+                parsed_chain.emplace_back(ds);
                 LOGD("Certificate %zu parsed successfully", i);
             } catch (const std::exception& e) {
                 LOGE("Certificate %zu parsing failed: %s", i, e.what());
                 return false;
             }
         }
-        
+
+        if (!pimpl_->root_ca_) {
+            LOGE("Certificate chain validation failed: no trusted root CA configured");
+            return false;
+        }
+
+        for (size_t i = 0; i + 1 < parsed_chain.size(); ++i) {
+            if (!(parsed_chain[i].issuer_dn() == parsed_chain[i + 1].subject_dn())) {
+                LOGE("Certificate chain validation failed: certificate %zu issuer does not match certificate %zu subject", i, i + 1);
+                return false;
+            }
+            if (!parsed_chain[i + 1].is_CA_cert()) {
+                LOGE("Certificate chain validation failed: certificate %zu is not a CA", i + 1);
+                return false;
+            }
+        }
+
+        if (!(parsed_chain.back() == *pimpl_->root_ca_)) {
+            LOGE("Certificate chain validation failed: final certificate does not match configured trust anchor");
+            return false;
+        }
+
+        Botan::Certificate_Store_In_Memory trust_store;
+        trust_store.add_certificate(*pimpl_->root_ca_);
+        LOGD("Using initialized root CA as trust anchor");
+
+        std::vector<Botan::X509_Certificate> end_certs = parsed_chain;
+
+        const auto validation_time = resolve_validation_time(current_time_unix);
+        const Botan::Path_Validation_Restrictions restrictions(false, 110);
+        const auto validation_result = Botan::x509_path_validate(
+            end_certs,
+            restrictions,
+            trust_store,
+            "",
+            Botan::Usage_Type::UNSPECIFIED,
+            validation_time
+        );
+
+        if (!validation_result.successful_validation()) {
+            LOGE("Certificate chain validation failed: %s", validation_result.result_string().c_str());
+            const auto warnings = validation_result.warnings_string();
+            if (!warnings.empty()) {
+                LOGE("Certificate chain warnings: %s", warnings.c_str());
+            }
+            return false;
+        }
+
+        if (!validation_result.no_warnings()) {
+            LOGD("Certificate chain validated with warnings: %s", validation_result.warnings_string().c_str());
+        }
+
         LOGI("Certificate chain validation successful");
         return true;
         
@@ -337,16 +414,20 @@ std::string V2XCryptoEngine::extract_sender_info(const std::vector<uint8_t>& cer
     }
 }
 
-bool V2XCryptoEngine::is_certificate_valid(
+bool V2XCryptoEngine::is_certificate_time_valid(
     const std::vector<uint8_t>& cert_der,
-    uint64_t /*current_time_unix*/) {
+    uint64_t current_time_unix) {
     
     try {
         Botan::DataSource_Memory ds(cert_der.data(), cert_der.size());
         Botan::X509_Certificate cert(ds);
-        
-        LOGD("Certificate validity check performed");
-        return true;
+        const auto validation_time = resolve_validation_time(current_time_unix);
+
+        const bool valid = cert.not_before().to_std_timepoint() <= validation_time &&
+                           validation_time <= cert.not_after().to_std_timepoint();
+
+        LOGD("Certificate validity check performed: %s", valid ? "valid" : "expired or not yet valid");
+        return valid;
         
     } catch (const std::exception& e) {
         LOGE("Certificate validity check error: %s", e.what());
@@ -354,9 +435,16 @@ bool V2XCryptoEngine::is_certificate_valid(
     }
 }
 
+void V2XCryptoEngine::clear_trusted_root_ca() {
+    LOGD("Clearing trusted root CA");
+    pimpl_->root_ca_.reset();
+    std::lock_guard<std::mutex> lock(g_trusted_root_mutex);
+    g_trusted_root_der.clear();
+}
+
 void V2XCryptoEngine::cleanup() {
     LOGD("Cleaning up V2XCryptoEngine");
-    pimpl_->root_ca_.reset();
+    clear_trusted_root_ca();
 }
 
 std::string V2XCryptoEngine::get_botan_version() {

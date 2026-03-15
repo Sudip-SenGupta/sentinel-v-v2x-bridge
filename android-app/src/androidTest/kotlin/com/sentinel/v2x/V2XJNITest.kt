@@ -205,6 +205,42 @@ class V2XJNITest {
         assertFalse("Invalid certificate chain should be rejected", V2X.validateCertificateChain(invalidChain))
     }
 
+    @Test
+    fun testValidGeneratedCertificateChainAccepted() {
+        val generator = V2XSignatureGenerator()
+        val chain = generator.createCertificateChain(3)
+        val encodedChain = chain.asReversed().map { it.first.encoded }.toTypedArray()
+
+        assertTrue("Trusted root should initialize", V2X.initializeWithRootCA(chain.first().first.encoded))
+        assertTrue("Generated root/intermediate/leaf chain should validate", V2X.validateCertificateChain(encodedChain))
+    }
+
+    @Test
+    fun testReorderedGeneratedCertificateChainRejected() {
+        val generator = V2XSignatureGenerator()
+        val chain = generator.createCertificateChain(3)
+        val wrongOrder = arrayOf(
+            chain.last().first.encoded,
+            chain.first().first.encoded,
+            chain[1].first.encoded
+        )
+
+        assertTrue("Trusted root should initialize", V2X.initializeWithRootCA(chain.first().first.encoded))
+        assertFalse("Reordered generated chain should be rejected", V2X.validateCertificateChain(wrongOrder))
+    }
+
+    @Test
+    fun testClearTrustedRootCAResetsValidationState() {
+        val generator = V2XSignatureGenerator()
+        val chain = generator.createCertificateChain(3)
+        val encodedChain = chain.asReversed().map { it.first.encoded }.toTypedArray()
+
+        assertTrue("Trusted root should initialize", V2X.initializeWithRootCA(chain.first().first.encoded))
+        assertTrue("Chain should validate with trusted root configured", V2X.validateCertificateChain(encodedChain))
+        assertTrue("Trusted root should clear", V2X.clearTrustedRootCA())
+        assertFalse("Chain should fail after trusted root is cleared", V2X.validateCertificateChain(encodedChain))
+    }
+
     private fun wrapInCOER(payload: ByteArray): ByteArray {
         val coer = mutableListOf<Byte>()
         coer.add(0x00.toByte())
@@ -272,6 +308,291 @@ class V2XJNITest {
     private fun leftPadTo32(bytes: ByteArray): ByteArray {
         require(bytes.size <= 32) { "ECDSA integer component larger than 32 bytes" }
         return ByteArray(32 - bytes.size) + bytes
+    }
+
+    @Test
+    fun testCOERBinaryMessageBuilderBSM() {
+        val builder = COERBinaryMessageBuilder()
+        
+        // Build unsigned BSM message
+        val bsmMessage = builder.buildTestBSM()
+        
+        assertNotNull("BSM message should not be null", bsmMessage)
+        assertTrue("BSM message should not be empty", bsmMessage.isNotEmpty())
+        
+        // First byte should be header 0x10 (version 1, unsigned)
+        assertEquals("First byte should be header 0x10", 0x10, bsmMessage[0].toInt() and 0xFF)
+        
+        // Should parse through frame detection
+        try {
+            val frameType = V2X.detectFrameType(bsmMessage)
+            assertNotNull("Frame type should be detected", frameType)
+            assertTrue("Frame type should identify BSM", frameType.uppercase().contains("BSM"))
+        } catch (e: Exception) {
+            fail("BSM parsing failed: ${e.message}")
+        }
+    }
+
+    @Test
+    fun testCOERBinaryMessageBuilderSPaT() {
+        val builder = COERBinaryMessageBuilder()
+        
+        // Build unsigned SPaT message
+        val spatMessage = builder.buildTestSPaT()
+        
+        assertNotNull("SPaT message should not be null", spatMessage)
+        assertTrue("SPaT message should not be empty", spatMessage.isNotEmpty())
+        
+        // Should parse through frame detection
+        try {
+            val frameType = V2X.detectFrameType(spatMessage)
+            assertNotNull("Frame type should be detected", frameType)
+            assertTrue("Frame type should identify SPaT", frameType.uppercase().contains("SPAT"))
+        } catch (e: Exception) {
+            fail("SPaT parsing failed: ${e.message}")
+        }
+    }
+
+    @Test
+    fun testCOERBinaryMessageBuilderPSM() {
+        val builder = COERBinaryMessageBuilder()
+        
+        // Build unsigned PSM message
+        val psmMessage = builder.buildTestPSM()
+        
+        assertNotNull("PSM message should not be null", psmMessage)
+        assertTrue("PSM message should not be empty", psmMessage.isNotEmpty())
+        
+        // Should parse through frame detection
+        try {
+            val frameType = V2X.detectFrameType(psmMessage)
+            assertNotNull("Frame type should be detected", frameType)
+            assertTrue("Frame type should identify PSM", frameType.uppercase().contains("PSM"))
+        } catch (e: Exception) {
+            fail("PSM parsing failed: ${e.message}")
+        }
+    }
+
+    @Test
+    fun testCOERBinaryMessageBuilderVarintEncoding() {
+        val builder = COERBinaryMessageBuilder()
+        
+        // Test short-form varint (0-127)
+        val shortForm = builder.encodeVarint(42)
+        assertEquals("Short-form varint should be 1 byte", 1, shortForm.size)
+        assertEquals("Short-form varint should be 42", 42, shortForm[0].toInt())
+        
+        // Test long-form varint (128+)
+        val longForm = builder.encodeVarint(256)
+        assertTrue("Long-form varint should be multiple bytes", longForm.size > 1)
+        assertEquals("Long-form varint should start with 0x80+ prefix", true, (longForm[0].toInt() and 0x80) != 0)
+    }
+
+    @Test
+    fun testCOERBinaryMessageBuilderHeaderByte() {
+        val builder = COERBinaryMessageBuilder()
+        
+        // Test unsigned header
+        val headerUnsigned = builder.buildHeaderByte(version = 1, isSigned = false)
+        assertEquals("Unsigned header should be 0x10", 0x10, headerUnsigned.toInt())
+        
+        // Test signed header
+        val headerSigned = builder.buildHeaderByte(version = 1, isSigned = true)
+        assertEquals("Signed header should be 0x12", 0x12, headerSigned.toInt())
+    }
+
+    // ============================================================================
+    // PHASE 1B: SIGNATURE GENERATOR TESTS
+    // ============================================================================
+
+    @Test
+    fun testSignatureGeneratorKeyPairGeneration() {
+        val generator = V2XSignatureGenerator()
+        
+        // Generate key pair
+        val keyPair = generator.generateKeyPair()
+        
+        assertNotNull("Private key should not be null", keyPair.private)
+        assertNotNull("Public key should not be null", keyPair.public)
+        assertEquals("Key algorithm should be EC", "EC", keyPair.private.algorithm)
+    }
+
+    @Test
+    fun testSignatureGeneratorCertificateChain() {
+        val generator = V2XSignatureGenerator()
+        
+        // Test chain depth 1
+        val chain1 = generator.createCertificateChain(1)
+        assertEquals("Chain depth 1 should have 1 certificate", 1, chain1.size)
+        
+        // Test chain depth 2
+        val chain2 = generator.createCertificateChain(2)
+        assertEquals("Chain depth 2 should have 2 certificates", 2, chain2.size)
+        
+        // Test chain depth 3
+        val chain3 = generator.createCertificateChain(3)
+        assertEquals("Chain depth 3 should have 3 certificates", 3, chain3.size)
+    }
+
+    @Test
+    fun testSignatureGeneratorSignMessage() {
+        val generator = V2XSignatureGenerator()
+        
+        // Generate key pair
+        val keyPair = generator.generateKeyPair()
+        
+        // Sign a message
+        val message = "Test message for signing".toByteArray()
+        val signature = generator.signMessage(message, keyPair.private)
+        
+        assertNotNull("Signature should not be null", signature)
+        assertTrue("Signature should not be empty", signature.isNotEmpty())
+        assertTrue("DER signature should start with SEQUENCE (0x30)", signature[0] == 0x30.toByte())
+    }
+
+    @Test
+    fun testSignatureGeneratorDERToP1363Conversion() {
+        val generator = V2XSignatureGenerator()
+        
+        // Generate key pair and sign message
+        val keyPair = generator.generateKeyPair()
+        val message = "Test message".toByteArray()
+        val derSignature = generator.signMessage(message, keyPair.private)
+        
+        // Convert DER to P1363
+        val p1363Signature = generator.derToP1363(derSignature)
+        
+        // P1363 format for P-256 should be r || s = 64 bytes
+        assertEquals("P1363 signature should be 64 bytes for P-256", 64, p1363Signature.size)
+    }
+
+    @Test
+    fun testSignedBSMWithChainDepth1() {
+        val generator = V2XSignatureGenerator()
+        
+        // Generate signed BSM with single certificate
+        val signedBSM = generator.generateSignedBSM(chainDepth = 1)
+        
+        assertNotNull("Signed BSM should not be null", signedBSM)
+        assertTrue("Signed BSM should not be empty", signedBSM.isNotEmpty())
+        
+        // Header should indicate signed message (0x12)
+        assertEquals("Header should be 0x12 (signed)", 0x12, signedBSM[0].toInt())
+        
+        // Should contain algorithm byte 0x04 (ECDSA P-256)
+        assertTrue("Should contain ECDSA P-256 algorithm byte", signedBSM.contains(0x04.toByte()))
+        
+        // Try to parse through frame detection
+        try {
+            val frameType = V2X.detectFrameType(signedBSM)
+            assertNotNull("Frame type should be detected for signed BSM", frameType)
+            assertTrue("Frame type should identify BSM", frameType.uppercase().contains("BSM"))
+        } catch (e: Exception) {
+            fail("Signed BSM parsing failed: ${e.message}")
+        }
+    }
+
+    @Test
+    fun testSignedSPaTWithChainDepth1() {
+        val generator = V2XSignatureGenerator()
+        
+        // Generate signed SPaT with single certificate
+        val signedSPaT = generator.generateSignedSPaT(chainDepth = 1)
+        
+        assertNotNull("Signed SPaT should not be null", signedSPaT)
+        assertTrue("Signed SPaT should not be empty", signedSPaT.isNotEmpty())
+        
+        // Header should indicate signed message (0x12)
+        assertEquals("Header should be 0x12 (signed)", 0x12, signedSPaT[0].toInt())
+        
+        // Try to parse through frame detection
+        try {
+            val frameType = V2X.detectFrameType(signedSPaT)
+            assertNotNull("Frame type should be detected for signed SPaT", frameType)
+            assertTrue("Frame type should identify SPaT", frameType.uppercase().contains("SPAT"))
+        } catch (e: Exception) {
+            fail("Signed SPaT parsing failed: ${e.message}")
+        }
+    }
+
+    @Test
+    fun testSignedPSMWithChainDepth1() {
+        val generator = V2XSignatureGenerator()
+        
+        // Generate signed PSM with single certificate
+        val signedPSM = generator.generateSignedPSM(chainDepth = 1)
+        
+        assertNotNull("Signed PSM should not be null", signedPSM)
+        assertTrue("Signed PSM should not be empty", signedPSM.isNotEmpty())
+        
+        // Header should indicate signed message (0x12)
+        assertEquals("Header should be 0x12 (signed)", 0x12, signedPSM[0].toInt())
+        
+        // Try to parse through frame detection
+        try {
+            val frameType = V2X.detectFrameType(signedPSM)
+            assertNotNull("Frame type should be detected for signed PSM", frameType)
+            assertTrue("Frame type should identify PSM", frameType.uppercase().contains("PSM"))
+        } catch (e: Exception) {
+            fail("Signed PSM parsing failed: ${e.message}")
+        }
+    }
+
+    @Test
+    fun testSignedBSMWithChainDepth2() {
+        val generator = V2XSignatureGenerator()
+        
+        // Generate signed BSM with certificate chain depth 2
+        val signedBSMChain2 = generator.generateSignedBSM(chainDepth = 2)
+        
+        assertNotNull("Signed BSM with chain depth 2 should not be null", signedBSMChain2)
+        assertTrue("Signed BSM with chain depth 2 should not be empty", signedBSMChain2.isNotEmpty())
+        
+        // Header should indicate signed message (0x12)
+        assertEquals("Header should be 0x12 (signed)", 0x12, signedBSMChain2[0].toInt())
+        
+        // Should be larger than chain depth 1 (extra certificate)
+        val signedBSMChain1 = generator.generateSignedBSM(chainDepth = 1)
+        assertTrue("Chain depth 2 should be larger than depth 1", signedBSMChain2.size > signedBSMChain1.size)
+    }
+
+    @Test
+    fun testSignedBSMWithChainDepth3() {
+        val generator = V2XSignatureGenerator()
+        
+        // Generate signed BSM with certificate chain depth 3
+        val signedBSMChain3 = generator.generateSignedBSM(chainDepth = 3)
+        
+        assertNotNull("Signed BSM with chain depth 3 should not be null", signedBSMChain3)
+        assertTrue("Signed BSM with chain depth 3 should not be empty", signedBSMChain3.isNotEmpty())
+        
+        // Header should indicate signed message and contain algorithm byte
+        assertEquals("Header should be 0x12 (signed)", 0x12, signedBSMChain3[0].toInt())
+        assertTrue("Should contain ECDSA P-256 algorithm byte", signedBSMChain3.contains(0x04.toByte()))
+        
+        // Should be larger than chain depth 1 (two extra certificates)
+        val signedBSMChain1 = generator.generateSignedBSM(chainDepth = 1)
+        assertTrue("Chain depth 3 should be larger than depth 1", signedBSMChain3.size > signedBSMChain1.size)
+    }
+
+    @Test
+    fun testSignedBSMProcessingThroughJNI() {
+        val generator = V2XSignatureGenerator()
+        val builder = COERBinaryMessageBuilder()
+        val chain = generator.createCertificateChain(2)
+        val signedBSM = generator.generateSignedMessageWithChain(builder.buildBSMPayload(), chain)
+
+        assertTrue("Trusted root should initialize", V2X.initializeWithRootCA(chain.first().first.encoded))
+
+        try {
+            val frameType = V2X.detectFrameType(signedBSM)
+            assertNotNull("Frame type should be detected", frameType)
+
+            val result = V2X.processMessage(signedBSM)
+            assertNotNull("Message processing should succeed", result)
+        } catch (e: Exception) {
+            fail("Signed BSM processing failed: ${e.message}")
+        }
     }
 }
 
