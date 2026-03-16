@@ -1,6 +1,6 @@
 # V2X Crypto And Certificate Chain Handoff
 
-**Status:** Certificate-chain hardening complete; Phase 1C malformation coverage complete; Phase 1D extension passing Android instrumentation tests
+**Status:** Certificate-chain hardening complete; Phase 1C malformation coverage complete; Phase 1D extension complete; Phase 1E wrap-up complete
 **Last Verified:** `:android-app:connectedDebugAndroidTest` passed with 67 tests
 **Scope:** Android test fixtures, JNI crypto surface, native Botan certificate validation, explicit trust-anchor handling
 
@@ -19,6 +19,29 @@ It covers:
 - where the trust anchor now enters the system
 - what tests prove today
 - what is still intentionally deferred
+
+---
+
+## Final Phase 1 Baseline
+
+Phase 1 is now complete with the following verified baseline:
+- 67 Android instrumentation tests passing
+- valid unsigned BSM, SPaT, and PSM fixture coverage
+- valid signed BSM end-to-end processMessage(...) coverage
+- grouped malformed fixture rejection coverage
+- grouped Phase 1D orchestration and stability coverage
+- end-to-end negative signed-message rejection for trust-anchor, CA-policy, time-validity, and leaf-policy failures
+
+### Final Success Criteria
+
+| Capability | Evidence | Result |
+| --- | --- | --- |
+| Real test certificate chains | BouncyCastle-issued root/intermediate/leaf fixtures | Complete |
+| Native chain validation | Botan PKIX path validation plus serialized chain-order checks | Complete |
+| Trust-anchor enforcement | Explicit root required; message-supplied root no longer trusted | Complete |
+| Leaf signer policy | Non-CA plus digitalSignature key usage enforced | Complete |
+| End-to-end signed message verification | JNI processMessage(...) fails closed before marshalling | Complete |
+| Parser robustness | Malformed COER catalogs reject without crashes | Complete |
 
 ---
 
@@ -256,6 +279,19 @@ flowchart TD
 The current JNI surface uses a singleton crypto engine for direct crypto operations, while `V2XMessageProcessor` constructs fresh `V2XCryptoEngine` instances internally. To make end-to-end `processMessage(...)` use the same trust anchor without a broader refactor, the configured root is shared across engine instances in native code.
 
 This is acceptable for now but still a design tradeoff. See deferred work below.
+
+---
+
+## Deferred PKI And Runtime Hardening
+
+These are the main items intentionally left beyond the Phase 1 boundary:
+- revocation handling and policy for offline vs online trust decisions
+- stronger certificate-profile / EKU enforcement for production signer certificates
+- replacing process-global trust-anchor state with scoped ownership
+- structured native/JNI error taxonomy instead of string-only failure reporting
+- broader semantic payload validation beyond parser-compatible fixture handling
+
+These are not blockers for the current Phase 1 JNI validation goal, but they are the next security and productization steps.
 
 ---
 

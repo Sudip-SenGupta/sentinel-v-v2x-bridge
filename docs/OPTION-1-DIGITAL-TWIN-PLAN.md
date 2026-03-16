@@ -1,7 +1,7 @@
 # Option 1 Plan: Digital Twin - Low-Level Design
 
-**Branch:** `feature/option-1-digital-twin`
-**Status:** Phase 1A, Phase 1B, Phase 1C, and the Phase 1D extension complete; ready for Phase 1E
+**Branch:** `feature/v2x-parser-and-crypto-hardening`
+**Status:** Phase 1A, Phase 1B, Phase 1C, Phase 1D, and Phase 1E complete
 **Scope:** Improve parser-frame and certificate-validation coverage using parser-compatible synthetic messages
 **Gap Closure:** Parser framing and malformed-input coverage improved; certificate-chain and trust-anchor validation hardened through Android JNI tests; end-to-end negative signed-message integration coverage added
 **Effort:** 1-2 weeks complete
@@ -232,12 +232,12 @@ Output:
 
 ### Phase 1E: Documentation (Day 12)
 
-Status: NEXT
+Status: COMPLETE
 
-Planned output:
-- final success-criteria table
-- final gap analysis for future PKI hardening
-- optional additional handoff polish if the branch is being prepared for review or merge
+Output:
+- final success-criteria table added
+- final gap analysis for future PKI hardening documented
+- handoff and test-vector docs aligned to the 67-test Phase 1 baseline
 
 ---
 
@@ -251,8 +251,28 @@ Current verified criteria:
 - certificate-chain trust, ordering, time-validity, and policy checks fail closed
 - negative signed-message integration coverage fails closed through `V2X.processMessage()`
 
+### Final Success Criteria Table
+
+| Area | Target | Current State | Status |
+| --- | --- | --- | --- |
+| Valid unsigned fixtures | BSM, SPaT, PSM detect and decode through JNI | Verified in Android instrumentation suite | Complete |
+| Valid signed fixtures | Signed parser-compatible fixtures work with certificate chains | Verified for depth and shared-chain cases | Complete |
+| Certificate validation | Trust anchor, ordering, CA constraints, time validity, and leaf policy enforced | Verified through direct JNI and end-to-end signed BSM tests | Complete |
+| Malformation handling | Parser-breaking fixtures fail without crashes | Verified for truncation, varints, bad headers, length overclaims, and signed-container corruption | Complete |
+| JNI integration | Grouped fixture execution remains stable | Verified through grouped Phase 1D runs and repeated batch coverage | Complete |
+| Full-suite baseline | Phase 1 Android instrumentation checkpoint is stable | `67` tests passing | Complete |
+
+## Deferred PKI Hardening
+
+The following items remain intentionally out of scope for Phase 1:
+- certificate revocation handling (CRL / OCSP)
+- production-grade EKU and certificate-profile enforcement beyond current leaf key-usage checks
+- non-global trust-anchor ownership in native code
+- semantic validation of BSM, SPaT, and PSM payload contents
+- broader parser/error taxonomy if JNI and native paths later expose structured error codes
+
 ---
 
 ## Next Step
 
-Proceed to Phase 1E documentation and final success-criteria wrap-up.
+Phase 1 is complete. The next work should either start Phase 2 semantic validation or consolidate the documentation set into a smaller canonical set before merge/review.

@@ -8,7 +8,8 @@ Current verified checkpoint:
 - Phase 1A, 1B, 1C complete
 - Phase 1D aggregation verified
 - Phase 1D end-to-end negative signed-message extension verified
-- `67` tests is the current verified full-suite checkpoint after the Phase 1D extension
+- Phase 1E documentation wrap-up complete
+- `67` tests is the final verified Phase 1 full-suite checkpoint
 
 ## Valid Unsigned Fixtures
 
@@ -102,10 +103,9 @@ End-to-end rejection coverage through full `V2X.processMessage()` pipeline:
 
 ## Next Expansion Options
 
-- Phase 1E: documentation and final success-criteria wrap-up
-- optional merge-readiness and review polish
-- Phase 2: Semantic validation (BSM field ranges, SPaT state machine, PSM attributes)
-- Phase 3: Stress and soak behavior (larger mixed fixture suites)
-- Phase 4: Explicit parser/error taxonomy if JNI/native paths begin returning structured error codes
+- Phase 2: semantic validation for BSM, SPaT, and PSM payload content
+- production PKI hardening: revocation, EKU/profile enforcement, scoped trust ownership
+- larger stress and soak suites with mixed valid and malformed fixture batches
+- explicit parser/error taxonomy if JNI/native paths begin returning structured error codes
 
 
