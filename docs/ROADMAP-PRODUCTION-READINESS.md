@@ -1,7 +1,7 @@
 # Sentinel V2X Bridge: Roadmap to Production Readiness
 
-**Document Status:** Strategic Analysis (March 14, 2026)  
-**Current State:** 16/16 tests passing, but 3 critical gaps remain in test coverage  
+**Document Status:** Strategic Analysis (March 14, 2026)
+**Current State:** 16/16 tests passing, but 3 critical gaps remain in test coverage
 **Objective:** Close gaps and maximize production readiness + CV impact
 
 ---
@@ -62,29 +62,29 @@ Close Parser (40%→60%) gap by generating synthetic COER test vectors that matc
 graph TD
     A["Kotlin Test Vector Generator"] --> B["Phase 1A: COER Binary Message Builder"]
     B --> B1["Build COER Messages<br/>Valid Frame Structures<br/>Malformed Variants"]
-    
+
     A --> C["Phase 1B: Signature Generator"]
     C --> C1["Self-Signed Certs<br/>Valid ECDSA Signatures<br/>Certificate Chains"]
-    
+
     A --> D["Phase 1C: Malformation Generator"]
     D --> D1["Truncated Frames<br/>Bit-Flip Corruption<br/>Invalid Types<br/>Edge Cases"]
-    
+
     B1 --> E["Binary COER Message Assembly"]
     C1 --> E
     D1 --> E
-    
+
     E --> F["20-30 Test Cases"]
     F --> G["JNI Bridge"]
-    
+
     G --> H["C++ Parser"]
     G --> I["C++ Crypto"]
-    
+
     H --> H1["✅ Edge Case Detection<br/>✅ Boundary Testing<br/>✅ Error Recovery"]
     I --> I1["✅ ECDSA Verification<br/>✅ Cert Chain Validation<br/>✅ Invalid Cert Rejection"]
-    
+
     H1 --> J["Parser Gap: 40% → 60%"]
     I1 --> K["Crypto Gap: 70% → 85% (QUALIFIED)"]
-    
+
     style A fill:#4a90e2
     style J fill:#7ed321
     style K fill:#7ed321
@@ -101,11 +101,11 @@ class COERMessageBuilder {
         issuerCert: ByteArray,
         payload: ByteArray,
         certChain: List<ByteArray>
-    ): ByteArray { 
+    ): ByteArray {
         // Build binary COER message matching v2x_coer_decoder.cpp structure
         // NOT full IEEE 1609.2 ASN.1
     }
-    
+
     fun buildUnsignedCOERFrame(payload: ByteArray): ByteArray {
         // COER message without signature section
     }
@@ -133,7 +133,7 @@ class V2XSignatureGenerator {
     fun generateSelfSignedChain(depth: Int = 2): List<X509Certificate> {
         // Build root CA → issuer → leaf signer
     }
-    
+
     fun signMessage(
         message: ByteArray,
         signerCert: X509Certificate,
@@ -141,7 +141,7 @@ class V2XSignatureGenerator {
     ): ByteArray {
         // Generate ECDSA(SHA-256) signature compatible with parser's signature container format
     }
-    
+
     fun toBotanFormat(androidSignature: ByteArray): ByteArray {
         // Convert Android signature format to DER bytes for COER packaging
     }
@@ -155,26 +155,26 @@ class V2XSignatureGenerator {
 // Build COER message matching v2x_coer_decoder.cpp format
 fun buildCOERSignedMessage(payload: ByteArray, signature: ByteArray, issuerCert: ByteArray, chainCerts: List<ByteArray> = emptyList()): ByteArray {
     val buffer = ByteArrayOutputStream()
-    
+
     // Header byte (version in upper nibble + flags in lower nibble)
     // Version 1, signed (bit 0x02 set): 0x12
     // Version 3, signed (bit 0x02 set): 0x32
     val headerByte = 0x12.toByte()  // Version 1, is-signed flag
     buffer.write(headerByte.toInt())
-    
+
     // Payload length (COER varint encoding)
     buffer.write(variantEncode(payload.size).toByteArray())
     buffer.write(payload)
-    
+
     // Signature container
     buffer.write(0x04)  // ECDSA P-256 algorithm (0x04 or 0x05 for P-384)
     buffer.write(variantEncode(signature.size).toByteArray())
     buffer.write(signature)
-    
+
     // Issuer certificate
     buffer.write(variantEncode(issuerCert.size).toByteArray())
     buffer.write(issuerCert)
-    
+
     // Certificate chain (if present)
     if (chainCerts.isNotEmpty()) {
         buffer.write(chainCerts.size.toByte())
@@ -183,14 +183,14 @@ fun buildCOERSignedMessage(payload: ByteArray, signature: ByteArray, issuerCert:
             buffer.write(cert)
         }
     }
-    
+
     return buffer.toByteArray()
 }
 
 private fun variantEncode(value: Int): ByteArray {
     // ASN.1/COER encoding: short-form (0-127) or length-of-length big-endian (128+)
     val result = mutableListOf<Byte>()
-    
+
     if (value <= 0x7F) {
         // Short form: single byte
         result.add((value and 0xFF).toByte())
@@ -209,7 +209,7 @@ private fun variantEncode(value: Int): ByteArray {
             result.add(((value shr (8 * i)) and 0xFF).toByte())
         }
     }
-    
+
     return result.toByteArray()
 }
 ```
@@ -218,7 +218,7 @@ private fun variantEncode(value: Int): ByteArray {
 ```kotlin
 class COERMalformationGenerator {
     fun validBSM(): ByteArray { /* Reference implementation */ }
-    
+
     fun truncatedPayload(): ByteArray { /* Missing 10 bytes */ }
     fun invalidFrameType(): ByteArray { /* Invalid message type */ }
     fun corruptLatitude(): ByteArray { /* Bit-flip in GPS data */ }
@@ -272,17 +272,17 @@ class COERMalformationGenerator {
 fun testE2EMockSignedMessage() {
     val generator = TestVectorGenerator()
     val (message, sig, certChain) = generator.generateValidBSMWithChain()
-    
+
     val decoded = V2X.processMessage(message)
     assertTrue(decoded is DecodedV2XMessage.BSM)
-    
+
     val verified = V2X.verifySignature(
         decoded.payload,
         sig,
         certChain[0].encoded // Leaf signer
     )
     assertTrue(verified)
-    
+
     val chainValid = V2X.validateCertificateChain(
         certChain.map { it.encoded }.toTypedArray()
     )
@@ -378,29 +378,29 @@ Achieve 70% E2E validation (frame-level + crypto) by parsing real-world V2X data
 ```mermaid
 graph TD
     A["USDOT Public Data Environment"] --> B["Real PCAP Captures<br/>1000+ V2X Messages<br/>Real Signatures<br/>Real Certificates"]
-    
+
     B --> C["Phase 2A: PCAP Parser"]
     C --> C1["Parse PCAP Format<br/>Extract Payload<br/>(Format-Dependent)<br/>Extract COER Bytes<br/>Parse Metadata"]
-    
+
     B --> D["Phase 2B: Dataset Integration"]
     D --> D1["Multiple Intersections<br/>Different Times of Day<br/>Geographic Distribution<br/>50+ OBU Sources"]
-    
+
     C1 --> E["Phase 2C: Signature Verification"]
     D1 --> E
-    
+
     E --> E1["Load USDOT Root CA<br/>Verify Signature<br/>Basic Chain Validation"]
-    
+
     E1 --> F["Raw COER Message Processing"]
     F --> G["C++ Parser"]
     F --> H["C++ Crypto"]
-    
+
     G --> G1["✅ Real COER Structures<br/>✅ Actual GPS Coordinates<br/>✅ Real Timestamp Patterns<br/>✅ Network Edge Cases"]
     H --> H1["✅ Real ECDSA Signatures<br/>✅ Actual USDOT PKI<br/>✅ Basic Certificate Chain Validation<br/>✅ Trust-Anchor Based Verification"]
-    
+
     G1 --> I["Parser Gap: 40% → 60%"]
     H1 --> J["Crypto Gap: 70% → 85% (QUALIFIED)"]
     J --> K["E2E Gap: 0% → 70%"]
-    
+
     style A fill:#f5a623
     style I fill:#7ed321
     style J fill:#7ed321
@@ -435,13 +435,13 @@ class V2XPCAPReader {
         // Identify and extract V2X message boundaries
         // Return raw COER message bytes (NOT packets)
     }
-    
+
     fun parsePacket(packetData: ByteArray): List<ByteArray> {
         // Extract potential V2X message payloads from single packet
         // Handle encapsulation format (dataset-specific)
         // Return only raw COER bytes for each message found
     }
-    
+
     fun filterByMessageType(type: MessageFrameType): Iterator<ByteArray>
     fun statsPerType(): Map<MessageFrameType, Int>
 }
@@ -472,7 +472,7 @@ PCAP files contain full network packets with headers. You must:
    - Publicly available, anonymized
    - 1000+ messages per capture (~100MB PCAP files)
    - May have payload already extracted OR require protocol-specific parsing
-   
+
 2. **Connected Vehicle Reference Implementation (CVRI)**
    - Qualcomm/NSF reference implementation
    - Document encapsulation format before parsing
@@ -485,10 +485,10 @@ fun testParserWithRealData(message: ByteArray) {
     // message is raw COER bytes (extracted from PCAP packets)
     val result = V2X.detectFrameType(message)
     assertNotNull(result)
-    
+
     val decoded = V2X.processMessage(message)  // API expects raw COER bytes
     assertNotNull(decoded)
-    
+
     // Frame structure validation only (semantic validation is deferred to the next phase)
     when (decoded) {
         is DecodedV2XMessage.BSM -> {
@@ -531,7 +531,7 @@ external fun cryptoSetRootCA(rootCADER: ByteArray): Boolean
 @Test
 fun testRealSignatureVerificationWithUSDOTData() {
     V2X.cryptoSetRootCA(loadUSDOTRootCA())
-    
+
     val reader = V2XPCAPReader()
     reader.readFile("usdot_captures/...")
         .forEach { packet ->
@@ -681,26 +681,26 @@ Increase Kotlin codebase from 13.6% to 30%+ and add **visual proof of concept** 
 ```mermaid
 graph TD
     A["Live V2X Message Stream<br/>UDP Port 4500"] --> B["Background Service"]
-    
+
     B --> C["Phase 3A: Radar UI"]
     C --> C1["Jetpack Compose<br/>Concentric Circles<br/>Vehicle Blips<br/>Heading Vectors<br/>Speed Indicators"]
-    
+
     B --> D["Phase 3B: Security Auditor"]
     D --> D1["Room Database<br/>Verification Logs<br/>Failure Analytics<br/>Real-time Stats"]
-    
+
     B --> E["Message Processing"]
     E --> E1["Parse COER Frame<br/>Verify Signature<br/>Validate Chain<br/>Log Result"]
-    
+
     C1 --> F["Radar Screen"]
     D1 --> G["Auditor Dashboard"]
     F --> H["Visual System State<br/>100+ msgs/sec display<br/>Threat Detection<br/>Real-time Updates"]
     G --> I["Security Audit Trail<br/>Failure Breakdown<br/>Message Statistics<br/>Threat Level"]
-    
+
     H --> J["Full-Stack<br/>Kotlin Footprint:<br/>13.6% → 30%+"]
     I --> J
-    
+
     J --> K["✅ JNI Callbacks Work<br/>✅ Real-time Processing<br/>✅ UI Performance<br/>✅ Database Reliability"]
-    
+
     style A fill:#bd10e0
     style H fill:#50e3c2
     style I fill:#50e3c2
@@ -718,7 +718,7 @@ fun V2XRadarScreen(viewModel: RadarViewModel) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawRadarBackplate(this)
         }
-        
+
         // Vehicle markers (color-coded by type)
         viewModel.vehiclesInRange.forEach { vehicle ->
             RadarBlip(
@@ -733,7 +733,7 @@ fun V2XRadarScreen(viewModel: RadarViewModel) {
                 }
             )
         }
-        
+
         // Ego vehicle at center (north-up orientation)
         Canvas(...) { drawEgoVehicle() }
     }
@@ -777,10 +777,10 @@ data class VerificationLog(
 interface VerificationLogDao {
     @Query("SELECT * FROM verification_logs ORDER BY timestamp DESC LIMIT 100")
     fun getRecentLogs(): Flow<List<VerificationLog>>
-    
+
     @Query("SELECT status, COUNT(*) as count FROM verification_logs GROUP BY status")
     fun getStatusStats(): Flow<List<StatusCount>>
-    
+
     @Insert
     suspend fun insert(log: VerificationLog)
 }
@@ -804,13 +804,13 @@ fun SecurityAuditorScreen(viewModel: AuditorViewModel) {
             StatCard("Failures Detected", viewModel.failureCount)
             StatCard("Threat Level", viewModel.threatLevel)
         }
-        
+
         // Failure breakdown chart
         BarChart(
             data = viewModel.failureReasons, // Map of reason → count
             title = "Verification Failure Analysis"
         )
-        
+
         // Real-time log stream
         LazyColumn {
             items(viewModel.recentLogs.value) { log ->
@@ -831,12 +831,12 @@ The current parser takes raw COER message bytes. Options for receiving them:
 ```kotlin
 class V2XBackgroundService : Service() {
     private val scope = CoroutineScope(Dispatchers.Default + Job())
-    
+
     override fun onCreate() {
         scope.launch {
             // Use mock COER messages from Option 1 test vectors
             val mockMessages = TestVectorGenerator.generateMockMessages()
-            
+
             while (isActive) {
                 mockMessages.forEach { coerBytes ->
                     try {
@@ -858,20 +858,20 @@ class V2XBackgroundService : Service() {
 ```kotlin
 class V2XBackgroundService : Service() {
     private val scope = CoroutineScope(Dispatchers.Default + Job())
-    
+
     override fun onCreate() {
         scope.launch {
             // Listen on UDP 4500 ONLY IF your deployment uses IPsec+NAT-T
             // NOT universally applicable - requires specific hardware/network setup
             val socket = DatagramSocket(4500)
-            
+
             while (isActive) {
                 try {
                     val datagram = socket.receive()
                     // Extract COER message bytes from UDP payload
                     // DEPLOYMENT SPECIFIC - depends on encapsulation format
                     val coerBytes = extractCoerFromUDPPayload(datagram.data)
-                    
+
                     val decoded = V2X.processMessage(coerBytes)
                     database.logs.insert(VerificationLog(...))
                     radarViewModel.addVehicle(decoded)
@@ -881,7 +881,7 @@ class V2XBackgroundService : Service() {
             }
         }
     }
-    
+
     private fun extractCoerFromUDPPayload(dataBytes: ByteArray): ByteArray {
         // Extract from UDP payload (skip headers, identify message boundaries)
         // ONLY works if you know UDP encapsulation format
@@ -982,7 +982,7 @@ graph LR
         style O1C fill:#7ed321
         style O1D fill:#f5a623
     end
-    
+
     subgraph opt2["Option 2: Traffic Sniffer<br/>4-6 weeks"]
         direction TB
         O2A["USDOT PCAP<br/>Data"]
@@ -997,7 +997,7 @@ graph LR
         style O2D fill:#f5a623
         style O2E fill:#7ed321
     end
-    
+
     subgraph opt3["Option 3: Dashboard<br/>3-4 weeks"]
         direction TB
         O3A["Jetpack<br/>Compose UI"]
@@ -1102,7 +1102,7 @@ Both Option 1 and Option 3 require **zero changes** to the C++ layer. Option 2 r
 
 | Option | Branch Name | Unique Files | New JNI Functions? |
 |--------|-------------|--------------|-------------------|
-| **1** | `feature/option-1-digital-twin` | `TestVectorGenerator.kt`, `COERBinaryMessageBuilder.kt`, `V2XSignatureGenerator.kt`, `COERMalformationGenerator.kt` | No |
+| **1** | `feature/v2x-parser-and-crypto-hardening` | `TestVectorGenerator.kt`, `COERBinaryMessageBuilder.kt`, `V2XSignatureGenerator.kt`, `COERMalformationGenerator.kt` | No |
 | **2** | `feature/option-2-traffic-sniffer` | `V2XPCAPReader.kt`, PCAP parser logic, test parametrization, `usdot_root_ca.der` | **YES** - `cryptoSetRootCA()` |
 | **3** | `feature/option-3-dashboard` | `V2XRadarScreen.kt`, `RadarBlip.kt`, `SecurityAuditorScreen.kt`, `V2XBackgroundService.kt`, `VerificationLog.kt` (Room entity), `RadarViewModel.kt`, `AuditorViewModel.kt` | No |
 
@@ -1113,7 +1113,7 @@ Both Option 1 and Option 3 require **zero changes** to the C++ layer. Option 2 r
 ```
 main/develop
 │
-├── feature/option-1-digital-twin
+├── feature/v2x-parser-and-crypto-hardening
 │   ├── android-app/src/androidTest/kotlin/com/sentinel/v2x/
 │   │   ├── TestVectorGenerator.kt (new)
 │   │   ├── COERBinaryMessageBuilder.kt (new)
@@ -1161,7 +1161,7 @@ main/develop
 ```bash
 git checkout main
 git pull origin main
-git merge feature/option-1-digital-twin
+git merge feature/v2x-parser-and-crypto-hardening
 # All tests should still pass
 ```
 **Why first?**
@@ -1202,7 +1202,7 @@ git merge feature/option-2-traffic-sniffer
 # Option 1 - start from current main
 git checkout main
 git pull origin main
-git checkout -b feature/option-1-digital-twin
+git checkout -b feature/v2x-parser-and-crypto-hardening
 
 # After Option 1 merges to main...
 # Option 3 - start from updated main
@@ -1259,11 +1259,11 @@ Then, add to the `android {}` block:
 ```kotlin
 android {
     // ... existing config ...
-    
+
     buildFeatures {
         compose = true  // REQUIRED for Compose dependencies
     }
-    
+
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.3"
     }
@@ -1277,11 +1277,11 @@ dependencies {
     implementation("androidx.compose.ui:ui:1.6.0")
     implementation("androidx.compose.material3:material3:1.1.0")
     implementation("androidx.compose.foundation:foundation:1.6.0")
-    
+
     // Room Database (with KSP - modern approach)
     implementation("androidx.room:room-runtime:2.6.0")
     ksp("androidx.room:room-compiler:2.6.0")
-    
+
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.0")
 }
@@ -1399,7 +1399,7 @@ Current Parser Validation Pipeline:
 
 - **Option 1 (Digital Twin):** Closes 40%→60% = Tests frame robustness
   - A message with invalid GPS coordinate (not -90 to +90) would still "pass" if COER framing is valid
-  
+
 - **Option 2 (Traffic Sniffer):** Closes 0%→70% = Tests real frame compatibility
   - Real messages parse without crashing, but we don't verify data correctness
   - Could contain nonsensical payload that still validates cryptographically
@@ -1506,10 +1506,6 @@ Each dataset requires understanding its specific transport/encapsulation. This i
 
 ---
 
-**Document prepared:** March 14, 2026 (REVISED - Transport layer architecture clarified)  
-**Review suggested:** Before finalizing sprint planning  
+**Document prepared:** March 14, 2026 (REVISED - Transport layer architecture clarified)
+**Review suggested:** Before finalizing sprint planning
 **Next step:** Decide whether to add the next phase, Semantic Validation, to complete the picture
-
-
-
-
