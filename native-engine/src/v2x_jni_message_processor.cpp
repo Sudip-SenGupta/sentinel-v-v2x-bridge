@@ -1,12 +1,12 @@
 /**
  * @file v2x_jni_message_processor.cpp
  * @brief JNI Bridge for V2X Message Processing
- * 
+ *
  * Marshals C++ DecodedV2XMessage structures to Java/Kotlin objects.
  * Enables Android apps to process real V2X data through the cipher.
- * 
+ *
  * Phase 4 Delivery: Full message processing pipeline via JNI
- * 
+ *
  * @author Sentinel V2X Bridge
  * @date March 11, 2026
  */
@@ -16,6 +16,7 @@
 #include <vector>
 #include <android/log.h>
 #include "v2x_coer_decoder.h"
+#include "v2x_message_processor.h"
 #include "v2x_structures.hpp"
 
 #define TAG "V2X-JNI"
@@ -36,7 +37,7 @@ public:
     static jclass DecodedV2XMessage_SPaT;
     static jclass DecodedV2XMessage_PSM;
     static jclass DecodedV2XMessage_Unknown;
-    
+
     // Data structure classes
     static jclass BasicSafetyMessage;
     static jclass SignalPhaseAndTiming;
@@ -45,12 +46,12 @@ public:
     static jclass Motion;
     static jclass IntersectionState;
     static jclass VehicleType;
-    
+
     // Primitive wrappers
     static jclass Integer;
     static jclass Long;
     static jclass Float;
-    
+
     // Collections
     static jclass ArrayList;
 };
@@ -92,14 +93,14 @@ bool initializeJavaClasses(JNIEnv* env) {
         JavaClasses::DecodedV2XMessage_PSM = env->FindClass("com/sentinel/v2x/DecodedV2XMessage$PSM");
         JavaClasses::DecodedV2XMessage_Unknown = env->FindClass("com/sentinel/v2x/DecodedV2XMessage$Unknown");
         JavaClasses::ArrayList = env->FindClass("java/util/ArrayList");
-        
+
         // Check for errors
         if (env->ExceptionCheck()) {
             LOGE("Failed to find Java classes");
             env->ExceptionDescribe();
             return false;
         }
-        
+
         // Make global references (required for use across JNI calls)
         JavaClasses::GeoPosition = (jclass)env->NewGlobalRef(JavaClasses::GeoPosition);
         JavaClasses::Motion = (jclass)env->NewGlobalRef(JavaClasses::Motion);
@@ -113,7 +114,7 @@ bool initializeJavaClasses(JNIEnv* env) {
         JavaClasses::DecodedV2XMessage_PSM = (jclass)env->NewGlobalRef(JavaClasses::DecodedV2XMessage_PSM);
         JavaClasses::DecodedV2XMessage_Unknown = (jclass)env->NewGlobalRef(JavaClasses::DecodedV2XMessage_Unknown);
         JavaClasses::ArrayList = (jclass)env->NewGlobalRef(JavaClasses::ArrayList);
-        
+
         LOGI("Java classes initialized successfully");
         return true;
     } catch (const std::exception& e) {
@@ -134,12 +135,12 @@ jobject createJavaGeoPosition(JNIEnv* env, const GeoPosition& pos) {
         JavaClasses::GeoPosition, "<init>",
         "(DDFF)V"  // double lat, double lon, float elev, float acc
     );
-    
+
     if (!constructor) {
         LOGE("GeoPosition constructor not found");
         return nullptr;
     }
-    
+
     return env->NewObject(
         JavaClasses::GeoPosition,
         constructor,
@@ -158,12 +159,12 @@ jobject createJavaMotion(JNIEnv* env, const Motion& motion) {
         JavaClasses::Motion, "<init>",
         "(FFFF)V"  // speed, heading, accel, yaw_rate
     );
-    
+
     if (!constructor) {
         LOGE("Motion constructor not found");
         return nullptr;
     }
-    
+
     return env->NewObject(
         JavaClasses::Motion,
         constructor,
@@ -180,7 +181,7 @@ jobject createJavaMotion(JNIEnv* env, const Motion& motion) {
  */
 jobject createJavaVehicleType(JNIEnv* env, VehicleType vehicleType) {
     const char* fieldName = nullptr;
-    
+
     // Map C++ enum to Java enum field name
     switch (vehicleType) {
         case VehicleType::SEDAN:
@@ -209,43 +210,43 @@ jobject createJavaVehicleType(JNIEnv* env, VehicleType vehicleType) {
             fieldName = "UNKNOWN";
             break;
     }
-    
+
     if (!fieldName) {
         LOGE("Unknown VehicleType value: %d", static_cast<int>(vehicleType));
         return nullptr;
     }
-    
+
     // Get static field ID for the enum value
     jfieldID fieldID = env->GetStaticFieldID(
         JavaClasses::VehicleType,
         fieldName,
         "Lcom/sentinel/v2x/VehicleType;"
     );
-    
+
     if (!fieldID) {
         LOGE("Failed to find VehicleType field: %s", fieldName);
         env->ExceptionClear();
         return nullptr;
     }
-    
+
     // Get the enum constant value
     jobject enumValue = env->GetStaticObjectField(
         JavaClasses::VehicleType,
         fieldID
     );
-    
+
     if (!enumValue) {
         LOGE("Failed to get VehicleType enum value: %s", fieldName);
         return nullptr;
     }
-    
+
     LOGI("Created VehicleType enum: %s", fieldName);
     return enumValue;
 }
 
 /**
  * Create Java VehicleInfo from default values
- * 
+ *
  * Uses Kotlin data class default constructor with all parameters
  * Kotlin compiles this to: (Z Z Z I I F F) V
  */
@@ -256,13 +257,13 @@ jobject createJavaVehicleInfo(JNIEnv* env) {
         LOGE("VehicleInfo class not found");
         return nullptr;
     }
-    
+
     // Try full constructor first: (boolean, boolean, boolean, int, int, float, float)
     jmethodID constructor = env->GetMethodID(
         vehicleInfoClass, "<init>",
         "(ZZZIIIFF)V"  // Correct signature with all 7 params
     );
-    
+
     if (!constructor) {
         env->ExceptionClear();
         // Try no-arg constructor with defaults
@@ -272,14 +273,14 @@ jobject createJavaVehicleInfo(JNIEnv* env) {
             env->DeleteLocalRef(vehicleInfoClass);
             return nullptr;
         }
-        
+
         // Use default constructor
         jobject vehicleInfo = env->NewObject(vehicleInfoClass, constructor);
         LOGI("Created VehicleInfo with default constructor");
         env->DeleteLocalRef(vehicleInfoClass);
         return vehicleInfo;
     }
-    
+
     // Use full constructor with explicit values
     jobject vehicleInfo = env->NewObject(
         vehicleInfoClass,
@@ -292,7 +293,7 @@ jobject createJavaVehicleInfo(JNIEnv* env) {
         (jfloat)2.7f,        // wheelBase
         (jfloat)1.6f         // trackWidth
     );
-    
+
     LOGI("Created VehicleInfo with full constructor");
     env->DeleteLocalRef(vehicleInfoClass);
     return vehicleInfo;
@@ -307,31 +308,31 @@ jobject createJavaBasicSafetyMessage(JNIEnv* env, const BasicSafetyMessage& bsm)
     jobject javaMotion = createJavaMotion(env, bsm.motion);
     jobject javaVehicleType = createJavaVehicleType(env, bsm.vehicle_type);
     jobject javaVehicleInfo = createJavaVehicleInfo(env);
-    
+
     if (!javaPos || !javaMotion || !javaVehicleType || !javaVehicleInfo) {
         LOGE("Failed to create position, motion, vehicle type, or vehicle info objects");
         return nullptr;
     }
-    
+
     jmethodID constructor = env->GetMethodID(
         JavaClasses::BasicSafetyMessage, "<init>",
         "(Ljava/lang/String;JILcom/sentinel/v2x/GeoPosition;"
         "Lcom/sentinel/v2x/Motion;Lcom/sentinel/v2x/VehicleType;"
         "Ljava/util/List;Lcom/sentinel/v2x/BasicSafetyMessage$VehicleInfo;)V"
     );
-    
+
     if (!constructor) {
         LOGE("BasicSafetyMessage constructor not found");
         return nullptr;
     }
-    
+
     // Create sender_id string
     jstring jsenderId = env->NewStringUTF(bsm.sender_id.c_str());
-    
+
     // Create empty alert list for now (simplified; full implementation would populate this)
-    jobject javaAlerts = env->NewObject(JavaClasses::ArrayList, 
+    jobject javaAlerts = env->NewObject(JavaClasses::ArrayList,
         env->GetMethodID(JavaClasses::ArrayList, "<init>", "()V"));
-    
+
     jobject bsm_object = env->NewObject(
         JavaClasses::BasicSafetyMessage,
         constructor,
@@ -344,13 +345,13 @@ jobject createJavaBasicSafetyMessage(JNIEnv* env, const BasicSafetyMessage& bsm)
         javaAlerts,
         javaVehicleInfo
     );
-    
+
     env->DeleteLocalRef(jsenderId);
     env->DeleteLocalRef(javaPos);
     env->DeleteLocalRef(javaMotion);
     env->DeleteLocalRef(javaAlerts);
     env->DeleteLocalRef(javaVehicleInfo);
-    
+
     return bsm_object;
 }
 
@@ -361,19 +362,19 @@ jobject createJavaDecodedBSM(JNIEnv* env, const DecodedV2XMessage& decoded) {
     try {
         jobject message = createJavaBasicSafetyMessage(env, std::get<BasicSafetyMessage>(decoded.payload));
         if (!message) return nullptr;
-        
+
         jmethodID constructor = env->GetMethodID(
             JavaClasses::DecodedV2XMessage_BSM, "<init>",
             "(Lcom/sentinel/v2x/BasicSafetyMessage;JZLjava/lang/String;)V"
         );
-        
+
         if (!constructor) {
             LOGE("DecodedV2XMessage.BSM constructor not found");
             return nullptr;
         }
-        
+
         jstring jissuer = env->NewStringUTF(decoded.issuer_name.c_str());
-        
+
         jobject result = env->NewObject(
             JavaClasses::DecodedV2XMessage_BSM,
             constructor,
@@ -382,10 +383,10 @@ jobject createJavaDecodedBSM(JNIEnv* env, const DecodedV2XMessage& decoded) {
             (jboolean)decoded.is_verified,
             jissuer
         );
-        
+
         env->DeleteLocalRef(jissuer);
         env->DeleteLocalRef(message);
-        
+
         return result;
     } catch (const std::exception& e) {
         LOGE("Exception in createJavaDecodedBSM: %s", e.what());
@@ -405,25 +406,25 @@ extern "C" {
  */
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
     JNIEnv* env = nullptr;
-    
+
     if (vm->GetEnv((void**)&env, JNI_VERSION_1_6) != JNI_OK) {
         LOGE("Failed to get JNI environment");
         return JNI_ERR;
     }
-    
+
     // Initialize Java class references
     if (!initializeJavaClasses(env)) {
         LOGE("Failed to initialize Java classes");
         return JNI_ERR;
     }
-    
+
     LOGI("V2X JNI library loaded successfully");
     return JNI_VERSION_1_6;
 }
 
 /**
  * Detect V2X message frame type from COER bytes
- * 
+ *
  * Java signature:
  *   public static native String detectFrameType(byte[] coerBytes);
  */
@@ -434,19 +435,19 @@ JNIEXPORT jstring JNICALL Java_com_sentinel_v2x_V2X_detectFrameType(
         // Convert Java byte array to C++ vector
         jsize len = env->GetArrayLength(coerBytes);
         jbyte* data = env->GetByteArrayElements(coerBytes, nullptr);
-        
+
         std::vector<uint8_t> payload(data, data + len);
         env->ReleaseByteArrayElements(coerBytes, data, JNI_ABORT);
-        
+
         // Parse COER message
         COERMessage msg = COERDecoder::parse(payload);
-        
+
         // Detect frame type
         MessageFrameType frame_type = COERDecoder::detect_frame_type(msg.payload);
-        
+
         // Convert to string
         std::string frame_str = COERDecoder::frame_type_to_string(frame_type);
-        
+
         return env->NewStringUTF(frame_str.c_str());
     } catch (const std::exception& e) {
         LOGE("Frame type detection failed: %s", e.what());
@@ -457,7 +458,7 @@ JNIEXPORT jstring JNICALL Java_com_sentinel_v2x_V2X_detectFrameType(
 
 /**
  * Process complete V2X message from COER bytes
- * 
+ *
  * Java signature:
  *   public static native DecodedV2XMessage processMessage(byte[] coerBytes);
  */
@@ -468,54 +469,66 @@ JNIEXPORT jobject JNICALL Java_com_sentinel_v2x_V2X_processMessage(
         // Convert Java byte array to C++ vector
         jsize len = env->GetArrayLength(coerBytes);
         jbyte* data = env->GetByteArrayElements(coerBytes, nullptr);
-        
+
         std::vector<uint8_t> coer_data(data, data + len);
         env->ReleaseByteArrayElements(coerBytes, data, JNI_ABORT);
-        
+
         LOGI("Processing COER message (%zu bytes)", coer_data.size());
-        
+
+        // Enforce the native verification pipeline before JNI marshalling.
+        V2XMessageProcessor processor;
+        const auto verification = processor.process_message(coer_data);
+        if (!verification.is_valid) {
+            const std::string error = verification.error_message.empty()
+                ? "Message verification failed"
+                : verification.error_message;
+            LOGE("Message processing failed verification: %s", error.c_str());
+            env->ThrowNew(env->FindClass("java/lang/RuntimeException"), error.c_str());
+            return nullptr;
+        }
+
         // Step 1: Parse COER container
         COERMessage raw_msg = COERDecoder::parse(coer_data);
         LOGI("COER parsing successful, payload size: %zu", raw_msg.payload.size());
-        
+
         // Step 2: Detect frame type
         MessageFrameType frame_type = COERDecoder::detect_frame_type(raw_msg.payload);
         LOGI("Detected frame type: %s", COERDecoder::frame_type_to_string(frame_type).c_str());
-        
+
         // Step 3: Decode frame into structured data
         DecodedV2XMessage decoded = COERDecoder::decode_frame(raw_msg.payload, frame_type);
         LOGI("Frame decoded successfully");
-        
+
         // Step 4: Marshal to Java object
         jobject result = nullptr;
-        
+
         switch (frame_type) {
             case MessageFrameType::BSM:
                 LOGI("Creating Java BSM object");
                 result = createJavaDecodedBSM(env, decoded);
                 break;
-            
+
             case MessageFrameType::SPAT:
                 LOGI("SPaT message type not yet fully supported in JNI");
                 // TODO: Implement SPaT marshalling
                 break;
-            
+
             case MessageFrameType::PSM:
                 LOGI("PSM message type not yet fully supported in JNI");
                 // TODO: Implement PSM marshalling
                 break;
-            
+
             default:
                 LOGI("Unknown message type");
                 break;
         }
-        
+
         if (result == nullptr) {
             LOGE("Failed to create Java object");
             env->ThrowNew(env->FindClass("java/lang/RuntimeException"),
                          "Failed to marshal message to Java object");
         }
-        
+
         return result;
     } catch (const COERFormatException& e) {
         LOGE("COER format error: %s", e.what());
@@ -530,7 +543,7 @@ JNIEXPORT jobject JNICALL Java_com_sentinel_v2x_V2X_processMessage(
 
 /**
  * Process multiple V2X messages in batch
- * 
+ *
  * Java signature:
  *   public static native List<DecodedV2XMessage> processBatch(List<byte[]> messages);
  */
@@ -539,102 +552,102 @@ JNIEXPORT jobject JNICALL Java_com_sentinel_v2x_V2X_processBatch(
 ) {
     try {
         if (messageList == nullptr) {
-            env->ThrowNew(env->FindClass("java/lang/IllegalArgumentException"), 
+            env->ThrowNew(env->FindClass("java/lang/IllegalArgumentException"),
                          "Message list cannot be null");
             return nullptr;
         }
-        
+
         // Get ArrayList methods
         jclass listClass = env->GetObjectClass(messageList);
         jmethodID sizeMethodID = env->GetMethodID(listClass, "size", "()I");
         jmethodID getMethodID = env->GetMethodID(listClass, "get", "(I)Ljava/lang/Object;");
-        
+
         // Get size of input list
         jint listSize = env->CallIntMethod(messageList, sizeMethodID);
         LOGI("Processing batch of %d messages", listSize);
-        
+
         // Create result ArrayList
         jobject resultList = env->NewObject(
             JavaClasses::ArrayList,
             env->GetMethodID(JavaClasses::ArrayList, "<init>", "()V")
         );
-        
+
         jmethodID addMethodID = env->GetMethodID(JavaClasses::ArrayList, "add", "(Ljava/lang/Object;)Z");
-        
+
         // Process each message in the batch
         for (jint i = 0; i < listSize; ++i) {
             try {
                 // Get the i-th ByteArray from the list
                 jobject messageObj = env->CallObjectMethod(messageList, getMethodID, i);
-                
+
                 if (messageObj == nullptr) {
                     LOGI("Message %d is null, skipping", i);
                     continue;
                 }
-                
+
                 // Cast to byte array and process
                 jbyteArray coerBytes = static_cast<jbyteArray>(messageObj);
                 jsize len = env->GetArrayLength(coerBytes);
                 jbyte* data = env->GetByteArrayElements(coerBytes, nullptr);
-                
+
                 std::vector<uint8_t> coer_data(data, data + len);
                 env->ReleaseByteArrayElements(coerBytes, data, JNI_ABORT);
-                
+
                 LOGI("Processing message %d (%zu bytes)", i, coer_data.size());
-                
+
                 // Step 1: Parse COER container
                 COERMessage raw_msg = COERDecoder::parse(coer_data);
                 LOGI("COER parsing successful for message %d, payload size: %zu", i, raw_msg.payload.size());
-                
+
                 // Step 2: Detect frame type
                 MessageFrameType frame_type = COERDecoder::detect_frame_type(raw_msg.payload);
-                LOGI("Detected frame type %s for message %d", 
+                LOGI("Detected frame type %s for message %d",
                      COERDecoder::frame_type_to_string(frame_type).c_str(), i);
-                
+
                 // Step 3: Decode frame into structured data
                 DecodedV2XMessage decoded = COERDecoder::decode_frame(raw_msg.payload, frame_type);
                 LOGI("Frame decoded successfully for message %d", i);
-                
+
                 // Step 4: Marshal to Java object
                 jobject javaMessage = nullptr;
-                
+
                 switch (frame_type) {
                     case MessageFrameType::BSM:
                         LOGI("Creating Java BSM object for batch message %d", i);
                         javaMessage = createJavaDecodedBSM(env, decoded);
                         break;
-                    
+
                     case MessageFrameType::SPAT:
                         LOGI("SPaT message not yet fully supported");
                         break;
-                    
+
                     case MessageFrameType::PSM:
                         LOGI("PSM message not yet fully supported");
                         break;
-                    
+
                     default:
                         LOGI("Unknown message type in batch");
                         break;
                 }
-                
+
                 if (javaMessage != nullptr) {
                     env->CallBooleanMethod(resultList, addMethodID, javaMessage);
                     env->DeleteLocalRef(javaMessage);
                     LOGI("Added decoded message %d to result list", i);
                 }
-                
+
                 env->DeleteLocalRef(messageObj);
-                
+
             } catch (const std::exception& e) {
                 LOGE("Error processing batch message %d: %s", i, e.what());
                 // Continue processing remaining messages
                 continue;
             }
         }
-        
+
         LOGI("Batch processing complete: %d messages processed", listSize);
         return resultList;
-        
+
     } catch (const std::exception& e) {
         LOGE("Batch processing failed: %s", e.what());
         env->ThrowNew(env->FindClass("java/lang/RuntimeException"), e.what());

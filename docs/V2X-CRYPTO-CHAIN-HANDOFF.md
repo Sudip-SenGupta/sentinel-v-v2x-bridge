@@ -1,7 +1,7 @@
 # V2X Crypto And Certificate Chain Handoff
 
-**Status:** Implemented and passing Android instrumentation tests  
-**Last Verified:** `:android-app:connectedDebugAndroidTest` passed with 40 tests  
+**Status:** Certificate-chain hardening complete; Phase 1C malformation coverage complete; Phase 1D extension passing Android instrumentation tests
+**Last Verified:** `:android-app:connectedDebugAndroidTest` passed with 67 tests
 **Scope:** Android test fixtures, JNI crypto surface, native Botan certificate validation, explicit trust-anchor handling
 
 **Related Plan:** See [`docs/OPTION-1-DIGITAL-TWIN-PLAN.md`](./OPTION-1-DIGITAL-TWIN-PLAN.md) for the original design-phase plan this implementation evolved from.
@@ -45,6 +45,7 @@ The current implementation now does all of the following:
 - clarifies that `isValidCertificate(...)` only checks the certificate validity window
 - enforces leaf signer policy: non-CA leaf plus required `digitalSignature` key usage
 - explicitly rejects wrong trust anchor, non-CA intermediate, expired leaf, and not-yet-valid leaf test chains
+- adds parser-breaking malformed COER fixtures for truncation, invalid varints, bad headers, length overclaims, signed-container corruption, grouped malformed fixture catalogs, and Phase 1D grouped and end-to-end signed-message execution coverage
 
 ---
 
@@ -77,6 +78,7 @@ flowchart TD
 - `android-app/src/androidTest/kotlin/com/sentinel/v2x/COERBinaryMessageBuilder.kt`
 - `android-app/src/androidTest/kotlin/com/sentinel/v2x/V2XSignatureGenerator.kt`
 - `android-app/src/androidTest/kotlin/com/sentinel/v2x/V2XJNITest.kt`
+- `docs/TEST-VECTORS.md`
 
 ### Android module configuration
 - `android-app/build.gradle.kts`
@@ -304,9 +306,26 @@ flowchart TD
     A --> G[Wrong trust anchor rejected]
     A --> H[Non-CA intermediate rejected]
     A --> I[Expired or not-yet-valid leaf rejected]
-    A --> J[Trusted root clear resets validation state]
-    A --> K[End-to-end signed BSM processing with configured root]
+    A --> J[Malformed COER parser rejection cases]
+    A --> K[Trusted root clear resets validation state]
+    A --> L[End-to-end signed BSM processing with configured root]
 ```
+
+### Phase 1D extension status
+
+Phase 1D now also verifies:
+- JNI `processMessage(...)` fails closed unless native verification succeeds
+- end-to-end signed-message rejection for wrong trusted root, non-CA intermediate, expired leaf, not-yet-valid leaf, and leaf key-usage policy failures
+- native signer verification uses the public key extracted from the X.509 certificate
+- Botan verification uses explicit `DER_SEQUENCE` for Java ECDSA signatures and `IEEE_1363` for raw 64-byte signatures
+
+### Phase 1D grouped execution status
+
+Phase 1D additions now also verify:
+- grouped valid unsigned fixtures execute through frame detection with BSM still exercised end to end via `processMessage(...)`
+- grouped valid signed fixtures execute through frame detection with signed BSM still exercised end to end via `processMessage(...)`
+- grouped malformed fixture catalogs are rejected systematically through `processMessage(...)`
+- repeated valid BSM batch execution remains stable through `processBatch(...)`
 
 ### Current green path
 
@@ -317,13 +336,14 @@ Most important passing checks:
 - non-CA intermediate is rejected
 - CA leaf and missing `digitalSignature` leaf usage are rejected
 - expired and not-yet-valid leaf certificates are rejected
+- malformed COER inputs are rejected across truncation, bad-version, bad-varint, length-overclaim, and signed-container corruption cases
 - clearing trusted root makes the same chain fail afterward
 - signed BSM end-to-end processing works when the proper trusted root is installed
 
 ### Test count checkpoint
 
 Latest verified checkpoint:
-- `40` Android instrumentation tests passing on `Sentinel_Car(AVD) - 14`
+- `67` Android instrumentation tests passing on `Sentinel_Car(AVD) - 14`
 
 ---
 
@@ -407,9 +427,9 @@ Potential next step:
 
 If continuing from here later, the safest order is:
 
-1. Decide whether trust-root state should remain global or become scoped.
-2. If staying global for now, add explicit test setup/teardown conventions around `initializeWithRootCA()` / `clearTrustedRootCA()`.
-3. Add end-to-end negative signed-message tests that exercise the same rejected-chain cases through `processMessage(...)`.
+1. Move to Phase 1E documentation and final success-criteria wrap-up now that the Phase 1D extension is verified.
+2. Add end-to-end negative signed-message tests that exercise the same rejected-chain cases through `processMessage(...)`.
+3. Decide whether trust-root state should remain global or become scoped.
 4. Decide whether leaf policy should also enforce EKU or a V2X-specific certificate profile.
 5. Plan revocation strategy as a separate production-readiness task.
 
@@ -425,6 +445,7 @@ When resuming this work later, verify these first:
 - reordered chain rejection test still exists and passes
 - wrong-trust-anchor and non-CA-intermediate rejection tests still exist and pass
 - expired and not-yet-valid leaf rejection tests still exist and pass
+- malformed COER rejection tests still exist and pass
 - trusted root clear/reset test still exists and passes
 
 ---
@@ -442,5 +463,6 @@ If trust-related work changes again, recheck these tests first:
 - wrong trusted root rejected
 - non-CA intermediate rejected
 - expired/not-yet-valid leaf rejected
+- malformed COER truncation/varint/header/length-overclaim cases rejected
 - clear trusted root resets validation state
 - signed BSM processing through JNI

@@ -125,9 +125,9 @@ public:
         }
         LOGI("V2XCryptoEngine initialized with Botan %s", Botan::version_cstr());
     }
-    
+
     ~Impl() = default;
-    
+
     std::unique_ptr<Botan::AutoSeeded_RNG> rng_;
     std::unique_ptr<Botan::X509_Certificate> root_ca_;
 };
@@ -147,10 +147,10 @@ V2XCryptoEngine::~V2XCryptoEngine() {
 bool V2XCryptoEngine::initialize_with_root_ca(const std::vector<uint8_t>& root_ca_der) {
     try {
         LOGI("Initializing with root CA (size: %zu bytes)", root_ca_der.size());
-        
+
         Botan::DataSource_Memory ds(root_ca_der.data(), root_ca_der.size());
         auto root_ca = std::make_unique<Botan::X509_Certificate>(ds);
-        
+
         if (!root_ca->is_CA_cert() && !root_ca->is_self_signed()) {
             LOGE("Provided certificate is neither a CA certificate nor a self-signed trust anchor");
             return false;
@@ -161,7 +161,7 @@ bool V2XCryptoEngine::initialize_with_root_ca(const std::vector<uint8_t>& root_c
             g_trusted_root_der = root_ca_der;
         }
         pimpl_->root_ca_ = std::move(root_ca);
-        
+
         LOGI("Root CA initialized successfully");
         return true;
     } catch (const std::exception& e) {
@@ -174,45 +174,42 @@ SignatureVerificationResult V2XCryptoEngine::verify_ecdsa_signature(
     const std::vector<uint8_t>& message,
     const std::vector<uint8_t>& signature,
     const std::vector<uint8_t>& public_key) {
-    
+
     auto start_time = std::chrono::high_resolution_clock::now();
     SignatureVerificationResult result{false, "", "", 0};
-    
+
     try {
         LOGD("Verifying ECDSA signature (msg: %zu, sig: %zu bytes, sig[0]=0x%02x, key: %zu bytes)",
              message.size(), signature.size(), signature.size() > 0 ? signature[0] : 0, public_key.size());
-        
-        // Load the public key from DER
+
+        // Load the subject public key from the signer certificate DER.
         try {
-            Botan::DataSource_Memory key_ds(public_key.data(), public_key.size());
-            auto pk = Botan::X509::load_key(key_ds);
-            LOGD("Public key loaded successfully from X.509 DER");
-            
-            // Create ECDSA verifier with SHA-256
-            // Botan uses EMSA1 (PSS with SHA-256) for ECDSA signature verification
-            Botan::PK_Verifier verifier(*pk, "EMSA1(SHA-256)");
-            
-            // Try DER signature first (most common)
+            Botan::DataSource_Memory cert_ds(public_key.data(), public_key.size());
+            Botan::X509_Certificate signer_cert(cert_ds);
+            auto pk = signer_cert.load_subject_public_key();
+            LOGD("Public key loaded successfully from signer certificate DER");
+
+            // Create ECDSA verifiers with explicit signature formats.
+            Botan::PK_Verifier der_verifier(*pk, "EMSA1(SHA-256)", Botan::DER_SEQUENCE);
+            Botan::PK_Verifier ieee1363_verifier(*pk, "EMSA1(SHA-256)", Botan::IEEE_1363);
+
+            // Java's SHA256withECDSA output is DER-encoded ASN.1, so try DER first.
             LOGD("Attempting DER signature verification (sig size: %zu)", signature.size());
-            result.valid = verifier.verify_message(message.data(), message.size(),
-                                                signature.data(), signature.size());
-            
-            // If DER failed but signature is 64 bytes (P1363 format), try conversion
+            result.valid = der_verifier.verify_message(message.data(), message.size(),
+                                                       signature.data(), signature.size());
+
+            // If DER failed but signature is 64 bytes, try IEEE-1363 directly.
             if (!result.valid && signature.size() == 64) {
-                LOGD("DER verification failed with 64-byte signature. Trying P1363 conversion...");
-                auto der_signature = ieee1363_p256_to_der(signature);
-                if (!der_signature.empty()) {
-                    LOGD("Converted P1363 to DER (%zu bytes), retrying verification", der_signature.size());
-                    result.valid = verifier.verify_message(message.data(), message.size(),
-                                                        der_signature.data(), der_signature.size());
-                    if (result.valid) {
-                        LOGD("P1363 conversion successful!");
-                    }
+                LOGD("DER verification failed with 64-byte signature. Trying IEEE-1363 verification...");
+                result.valid = ieee1363_verifier.verify_message(message.data(), message.size(),
+                                                                signature.data(), signature.size());
+                if (result.valid) {
+                    LOGD("IEEE-1363 verification successful!");
                 }
             }
-            
+
             result.algorithm = "EMSA1(SHA-256)";
-            
+
             if (result.valid) {
                 LOGI("ECDSA signature verification successful");
             } else {
@@ -223,17 +220,17 @@ SignatureVerificationResult V2XCryptoEngine::verify_ecdsa_signature(
             LOGE("Failed to load/process public key: %s", key_error.what());
             result.error_message = std::string("Key loading failed: ") + key_error.what();
         }
-        
+
     } catch (const std::exception& e) {
         LOGE("ECDSA verification exception: %s", e.what());
         result.valid = false;
         result.error_message = e.what();
     }
-    
+
     auto end_time = std::chrono::high_resolution_clock::now();
-    result.verification_time_ms = 
+    result.verification_time_ms =
         std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
-    
+
     return result;
 }
 
@@ -262,29 +259,29 @@ std::string V2XCryptoEngine::sha256_hex(const std::vector<uint8_t>& data) {
 
 CertificateInfo V2XCryptoEngine::parse_certificate(const std::vector<uint8_t>& cert_der) {
     CertificateInfo info{};
-    
+
     try {
         LOGD("Parsing X.509 certificate (%zu bytes)", cert_der.size());
-        
+
         Botan::DataSource_Memory ds(cert_der.data(), cert_der.size());
         Botan::X509_Certificate cert(ds);
-        
+
         // Extract certificate information
         auto subject_dns = cert.subject_info("X520.CommonName");
         if (!subject_dns.empty()) {
             info.subject = subject_dns[0];
         }
-        
+
         auto issuer_dns = cert.issuer_info("X520.CommonName");
         if (!issuer_dns.empty()) {
             info.issuer = issuer_dns[0];
         }
-        
+
         info.is_ca = cert.is_CA_cert();
-        
-        LOGI("Certificate parsed - Subject: %s, CA: %s", 
+
+        LOGI("Certificate parsed - Subject: %s, CA: %s",
              info.subject.c_str(), info.is_ca ? "yes" : "no");
-        
+
         return info;
     } catch (const std::exception& e) {
         LOGE("Certificate parsing error: %s", e.what());
@@ -295,13 +292,13 @@ CertificateInfo V2XCryptoEngine::parse_certificate(const std::vector<uint8_t>& c
 bool V2XCryptoEngine::validate_certificate_chain(
     const std::vector<std::vector<uint8_t>>& certificate_chain,
     uint64_t current_time_unix) {
-    
+
     try {
         if (certificate_chain.empty()) {
             LOGE("Empty certificate chain");
             return false;
         }
-        
+
         LOGI("Validating certificate chain (%zu certificates)", certificate_chain.size());
 
         std::vector<Botan::X509_Certificate> parsed_chain;
@@ -383,7 +380,7 @@ bool V2XCryptoEngine::validate_certificate_chain(
 
         LOGI("Certificate chain validation successful");
         return true;
-        
+
     } catch (const std::exception& e) {
         LOGE("Certificate chain validation error: %s", e.what());
         return false;
@@ -392,18 +389,18 @@ bool V2XCryptoEngine::validate_certificate_chain(
 
 std::vector<std::vector<uint8_t>> V2XCryptoEngine::parse_ieee1609_message(
     const std::vector<uint8_t>& message_der) {
-    
+
     std::vector<std::vector<uint8_t>> fields;
     try {
         LOGD("Parsing IEEE 1609.2 message (%zu bytes)", message_der.size());
-        
+
         // Phase 2 preliminary: Extract basic fields from ASN.1 DER
         // Full implementation requires IEEE 1609.2 ASN.1 schema parsing
         fields.push_back(message_der);
-        
+
         LOGI("IEEE 1609.2 message parsed");
         return fields;
-        
+
     } catch (const std::exception& e) {
         LOGE("Message parsing error: %s", e.what());
         throw;
@@ -414,7 +411,7 @@ std::string V2XCryptoEngine::extract_sender_info(const std::vector<uint8_t>& cer
     try {
         Botan::DataSource_Memory ds(certificate_der.data(), certificate_der.size());
         Botan::X509_Certificate cert(ds);
-        
+
         auto subject_dns = cert.subject_info("X520.CommonName");
         if (!subject_dns.empty()) {
             return subject_dns[0];
@@ -429,7 +426,7 @@ std::string V2XCryptoEngine::extract_sender_info(const std::vector<uint8_t>& cer
 bool V2XCryptoEngine::is_certificate_time_valid(
     const std::vector<uint8_t>& cert_der,
     uint64_t current_time_unix) {
-    
+
     try {
         Botan::DataSource_Memory ds(cert_der.data(), cert_der.size());
         Botan::X509_Certificate cert(ds);
@@ -440,7 +437,7 @@ bool V2XCryptoEngine::is_certificate_time_valid(
 
         LOGD("Certificate validity check performed: %s", valid ? "valid" : "expired or not yet valid");
         return valid;
-        
+
     } catch (const std::exception& e) {
         LOGE("Certificate validity check error: %s", e.what());
         return false;
