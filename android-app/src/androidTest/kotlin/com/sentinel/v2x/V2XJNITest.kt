@@ -313,6 +313,129 @@ class V2XJNITest {
         assertFalse("Chain should fail after trusted root is cleared", V2X.validateCertificateChain(encodedChain))
     }
 
+    @Test
+    fun testMalformedTruncatedHeaderRejected() {
+        val generator = COERMalformationGenerator()
+        assertRejectedByProcessMessage(generator.buildTruncatedHeaderMessage())
+    }
+
+    @Test
+    fun testMalformedTruncatedPayloadRejected() {
+        val generator = COERMalformationGenerator()
+        assertRejectedByProcessMessage(generator.buildTruncatedPayloadMessage())
+    }
+
+    @Test
+    fun testMalformedIndefiniteLengthRejected() {
+        val generator = COERMalformationGenerator()
+        assertRejectedByProcessMessage(generator.buildIndefiniteLengthMessage())
+    }
+
+    @Test
+    fun testMalformedOverflowVarintRejected() {
+        val generator = COERMalformationGenerator()
+        assertRejectedByProcessMessage(generator.buildOverflowVarintMessage())
+    }
+
+    @Test
+    fun testMalformedUnsupportedVersionRejected() {
+        val generator = COERMalformationGenerator()
+        assertRejectedByProcessMessage(generator.buildUnsupportedVersionMessage())
+    }
+
+    @Test
+    fun testMalformedTruncatedLongFormVarintRejected() {
+        val generator = COERMalformationGenerator()
+        assertRejectedByProcessMessage(generator.buildTruncatedLongFormVarintMessage())
+    }
+
+    @Test
+    fun testMalformedPayloadLengthOverclaimRejected() {
+        val generator = COERMalformationGenerator()
+        assertRejectedByProcessMessage(generator.buildPayloadLengthOverclaimMessage())
+    }
+
+    @Test
+    fun testMalformedSignatureLengthOverclaimRejected() {
+        val generator = COERMalformationGenerator()
+        assertRejectedByProcessMessage(generator.buildSignatureLengthOverclaimMessage())
+    }
+
+    @Test
+    fun testMalformedIssuerCertLengthOverclaimRejected() {
+        val generator = COERMalformationGenerator()
+        assertRejectedByProcessMessage(generator.buildIssuerCertLengthOverclaimMessage())
+    }
+
+    @Test
+    fun testMalformedChainCertLengthOverclaimRejected() {
+        val generator = COERMalformationGenerator()
+        assertRejectedByProcessMessage(generator.buildChainCertLengthOverclaimMessage())
+    }
+
+    @Test
+    fun testMalformedChainDepthCountMismatchRejected() {
+        val generator = COERMalformationGenerator()
+        assertRejectedByProcessMessage(generator.buildChainDepthCountMismatchMessage())
+    }
+
+    @Test
+    fun testMalformedMissingSignatureAlgorithmRejected() {
+        val generator = COERMalformationGenerator()
+        assertRejectedByProcessMessage(generator.buildMissingSignatureAlgorithmMessage())
+    }
+
+    @Test
+    fun testMalformedTruncatedIssuerCertLengthVarintRejected() {
+        val generator = COERMalformationGenerator()
+        assertRejectedByProcessMessage(generator.buildTruncatedIssuerCertLengthVarintMessage())
+    }
+
+    @Test
+    fun testMalformedTruncatedChainCertLengthVarintRejected() {
+        val generator = COERMalformationGenerator()
+        assertRejectedByProcessMessage(generator.buildTruncatedChainCertLengthVarintMessage())
+    }
+
+    @Test
+    fun testMalformedUnsupportedFrameTypeRejected() {
+        val generator = COERMalformationGenerator()
+        assertRejectedByProcessMessage(generator.buildUnsupportedFrameTypeMessage())
+    }
+
+    @Test
+    fun testMalformedTruncatedSignedContainerRejected() {
+        val generator = COERMalformationGenerator()
+        assertRejectedByProcessMessage(generator.buildTruncatedSignedContainerMessage())
+    }
+
+    @Test
+    fun testMalformedDanglingChainDepthRejected() {
+        val generator = COERMalformationGenerator()
+        assertRejectedByProcessMessage(generator.buildDanglingChainDepthMessage())
+    }
+
+    @Test
+    fun testMalformedFixtureCatalogHasExpectedCoverage() {
+        val generator = COERMalformationGenerator()
+        assertTrue("Unsigned malformed catalog should have broad coverage", generator.unsignedParserRejectionCases().size >= 8)
+        assertTrue("Signed malformed catalog should have broad coverage", generator.signedParserRejectionCases().size >= 9)
+        assertEquals(
+            "Combined malformed catalog should include all unsigned and signed cases",
+            generator.unsignedParserRejectionCases().size + generator.signedParserRejectionCases().size,
+            generator.allProcessMessageRejectionCases().size
+        )
+    }
+
+    private fun assertRejectedByProcessMessage(message: ByteArray) {
+        try {
+            V2X.processMessage(message)
+            fail("Malformed message should be rejected")
+        } catch (_: RuntimeException) {
+            // Expected JNI failure path for malformed COER input.
+        }
+    }
+
     private fun wrapInCOER(payload: ByteArray): ByteArray {
         val coer = mutableListOf<Byte>()
         coer.add(0x00.toByte())
