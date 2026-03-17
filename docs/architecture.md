@@ -27,7 +27,7 @@ Primary repository areas:
 Supporting structure notes:
 - Android app packaging and JNI integration are separated into `app/` and `android-app/`
 - native-engine development remains the deeper Linux/WSL-first path
-- the docs tree is being reduced toward a smaller canonical set plus `docs/archive/`
+- the docs tree is organized around a smaller canonical documentation set
 
 ## Module Boundaries
 

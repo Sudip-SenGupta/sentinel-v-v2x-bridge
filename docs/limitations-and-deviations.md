@@ -101,7 +101,7 @@ This also makes security and compliance review simpler because the project can p
 Known follow-up items include:
 - replace process-global trust state with scoped ownership
 - continue clarifying legacy API names where semantics are narrower than the name implies
-- finish documentation consolidation and archive superseded phase/session docs
+- keep the canonical documentation set aligned with future implementation changes
 - define stronger performance and batching guidance for higher-frequency message processing
 
 ## Productionization Risks

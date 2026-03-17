@@ -70,7 +70,7 @@ These earlier phases are no longer the active planning documents, but their deli
 ### Phase 1E
 - Completed Phase 1 documentation wrap-up after the Phase 1D implementation work was already finished
 - Recorded final success criteria and deferred work
-- Began migration toward a smaller canonical documentation set
+- Established a smaller canonical documentation set
 
 ## Test Status
 
@@ -120,5 +120,4 @@ A practical rule for future integration is:
 ## Next Engineering Steps
 
 The most natural next steps are:
-- complete the remaining documentation consolidation and archive pass
-- or start Phase 2 semantic validation for payload-level rules
+- start Phase 2 semantic validation for payload-level rules
