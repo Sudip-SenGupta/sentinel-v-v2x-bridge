@@ -93,3 +93,6 @@ It does not yet claim:
 - full standards-faithful payload semantics
 - revocation-aware PKI behavior
 - production-complete semantic validation of BSM, SPaT, and PSM contents
+
+![Visitors](https://api.visitorbadge.io/api/visitors?path=https%3A%2F%2Fgithub.com%2FSudip-SenGupta%2Fsentinel-v-v2x-bridge&label=TOTAL%20VISITS&countColor=%23263159)
+

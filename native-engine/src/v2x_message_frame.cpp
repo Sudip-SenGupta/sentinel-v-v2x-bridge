@@ -78,29 +78,6 @@ MessageFrameType COERDecoder::detect_frame_type(const std::vector<uint8_t>& payl
 // ============================================================================
 
 /**
- * Helper: Extract variable-length integer from COER encoding
- */
-static size_t extract_varint(const std::vector<uint8_t>& data, size_t& pos) {
-    if (pos >= data.size()) {
-        throw COERBufferException("Cannot read varint: truncated buffer");
-    }
-    
-    uint8_t first = data[pos++];
-    if (first <= 0x7F) {
-        return first;
-    }
-    
-    uint8_t length_of_length = first & 0x7F;
-    size_t value = 0;
-    
-    for (uint8_t i = 0; i < length_of_length && pos < data.size(); ++i) {
-        value = (value << 8) | data[pos++];
-    }
-    
-    return value;
-}
-
-/**
  * Helper: Extract latitude/longitude from COER encoding
  * 
  * IEEE 1609.2 uses 32-bit signed values in units of 1/10,000,000 degree

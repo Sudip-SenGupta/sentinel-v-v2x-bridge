@@ -107,6 +107,20 @@ public:
  * Contains the extracted components of a V2X message including metadata,
  * payload data, and optional signature container with certificate chain.
  */
+/**
+ * @struct SignedMessageComponents
+ * @brief Decoder-owned view of the signed portions of a parsed message
+ *
+ * Keeps extraction rules inside the decoder contract so higher-level callers
+ * do not need to know which COERMessage fields carry the signer certificate,
+ * chain, or signature bytes.
+ */
+struct SignedMessageComponents {
+    const std::vector<uint8_t>* payload = nullptr;
+    const std::vector<uint8_t>* signature = nullptr;
+    const std::vector<uint8_t>* issuer_cert = nullptr;
+    const std::vector<std::vector<uint8_t>>* cert_chain = nullptr;
+};
 struct COERMessage {
     /**
      * @struct SignatureContainer
@@ -505,6 +519,18 @@ public:
      * @complexity Space: O(m) where m = total size of all chain certificates
      */
     static std::vector<std::vector<uint8_t>> extract_certificate_chain(const COERMessage& message);
+
+    /**
+     * Extract all signed-message components through the decoder contract.
+     *
+     * This keeps higher-level callers from reaching into COERMessage fields
+     * directly for payload, signature, issuer certificate, and chain handling.
+     *
+     * @param message Parsed COERMessage (from parse())
+     * @return SignedMessageComponents view into the parsed message
+     * @throws COERFormatException if message is not signed or required parts are missing
+     */
+    static SignedMessageComponents extract_signed_components(const COERMessage& message);
     
     /**
      * Extract message payload (the data that was signed)

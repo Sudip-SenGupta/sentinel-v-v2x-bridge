@@ -1,17 +1,14 @@
 #include "v2x_crypto_engine.h"
 
-#include <botan/botan.h>
-#include <botan/pubkey.h>
+#include <botan/auto_rng.h>
+#include <botan/certstor.h>
+#include <botan/data_src.h>
 #include <botan/ecdsa.h>
 #include <botan/hash.h>
+#include <botan/pubkey.h>
+#include <botan/version.h>
 #include <botan/x509cert.h>
-#include <botan/x509_ca.h>
-#include <botan/der_enc.h>
-#include <botan/asn1_time.h>
-#include <botan/certstor.h>
 #include <botan/x509path.h>
-#include <botan/auto_rng.h>
-#include <botan/pem.h>
 
 #include <ctime>
 #include <sstream>
@@ -36,62 +33,6 @@
 
 namespace {
 
-std::vector<uint8_t> encode_der_length(size_t length) {
-    if (length <= 0x7F) {
-        return {static_cast<uint8_t>(length)};
-    }
-
-    std::vector<uint8_t> bytes;
-    while (length > 0) {
-        bytes.insert(bytes.begin(), static_cast<uint8_t>(length & 0xFF));
-        length >>= 8;
-    }
-
-    std::vector<uint8_t> encoded;
-    encoded.push_back(static_cast<uint8_t>(0x80 | bytes.size()));
-    encoded.insert(encoded.end(), bytes.begin(), bytes.end());
-    return encoded;
-}
-
-std::vector<uint8_t> to_der_integer_component(const uint8_t* begin, size_t length) {
-    while (length > 1 && *begin == 0x00) {
-        ++begin;
-        --length;
-    }
-
-    std::vector<uint8_t> component(begin, begin + length);
-    if (!component.empty() && (component.front() & 0x80) != 0) {
-        component.insert(component.begin(), 0x00);
-    }
-    return component;
-}
-
-std::vector<uint8_t> ieee1363_p256_to_der(const std::vector<uint8_t>& signature) {
-    if (signature.size() != 64) {
-        return {};
-    }
-
-    auto r = to_der_integer_component(signature.data(), 32);
-    auto s = to_der_integer_component(signature.data() + 32, 32);
-
-    std::vector<uint8_t> body;
-    body.push_back(0x02);
-    auto r_len = encode_der_length(r.size());
-    body.insert(body.end(), r_len.begin(), r_len.end());
-    body.insert(body.end(), r.begin(), r.end());
-
-    body.push_back(0x02);
-    auto s_len = encode_der_length(s.size());
-    body.insert(body.end(), s_len.begin(), s_len.end());
-    body.insert(body.end(), s.begin(), s.end());
-
-    std::vector<uint8_t> der;
-    der.push_back(0x30);
-    auto seq_len = encode_der_length(body.size());
-    der.insert(der.end(), seq_len.begin(), seq_len.end());
-    der.insert(der.end(), body.begin(), body.end());
-    return der;
-}
 
 std::mutex g_trusted_root_mutex;
 std::vector<uint8_t> g_trusted_root_der;

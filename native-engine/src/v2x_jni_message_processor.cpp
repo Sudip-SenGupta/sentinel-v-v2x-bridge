@@ -404,7 +404,7 @@ extern "C" {
  * JNI_OnLoad: Called when native library is loaded
  * Initialize Java class references here
  */
-JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /*reserved*/) {
     JNIEnv* env = nullptr;
 
     if (vm->GetEnv((void**)&env, JNI_VERSION_1_6) != JNI_OK) {
@@ -429,7 +429,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
  *   public static native String detectFrameType(byte[] coerBytes);
  */
 JNIEXPORT jstring JNICALL Java_com_sentinel_v2x_V2X_detectFrameType(
-    JNIEnv* env, jclass clazz, jbyteArray coerBytes
+    JNIEnv* env, jclass /*clazz*/, jbyteArray coerBytes
 ) {
     try {
         // Convert Java byte array to C++ vector
@@ -463,7 +463,7 @@ JNIEXPORT jstring JNICALL Java_com_sentinel_v2x_V2X_detectFrameType(
  *   public static native DecodedV2XMessage processMessage(byte[] coerBytes);
  */
 JNIEXPORT jobject JNICALL Java_com_sentinel_v2x_V2X_processMessage(
-    JNIEnv* env, jclass clazz, jbyteArray coerBytes
+    JNIEnv* env, jclass /*clazz*/, jbyteArray coerBytes
 ) {
     try {
         // Convert Java byte array to C++ vector
@@ -487,19 +487,18 @@ JNIEXPORT jobject JNICALL Java_com_sentinel_v2x_V2X_processMessage(
             return nullptr;
         }
 
-        // Step 1: Parse COER container
-        COERMessage raw_msg = COERDecoder::parse(coer_data);
-        LOGI("COER parsing successful, payload size: %zu", raw_msg.payload.size());
+        if (!verification.decoded_message.has_value()) {
+            LOGE("Message verification succeeded without a decoded message");
+            env->ThrowNew(env->FindClass("java/lang/RuntimeException"),
+                         "Verified message is missing decoded payload");
+            return nullptr;
+        }
 
-        // Step 2: Detect frame type
-        MessageFrameType frame_type = COERDecoder::detect_frame_type(raw_msg.payload);
-        LOGI("Detected frame type: %s", COERDecoder::frame_type_to_string(frame_type).c_str());
+        const auto& decoded = *verification.decoded_message;
+        const auto frame_type = verification.frame_type;
+        LOGI("Using processor-decoded frame type: %s", COERDecoder::frame_type_to_string(frame_type).c_str());
 
-        // Step 3: Decode frame into structured data
-        DecodedV2XMessage decoded = COERDecoder::decode_frame(raw_msg.payload, frame_type);
-        LOGI("Frame decoded successfully");
-
-        // Step 4: Marshal to Java object
+        // Step 1: Marshal verified decoded data to Java object
         jobject result = nullptr;
 
         switch (frame_type) {
@@ -548,7 +547,7 @@ JNIEXPORT jobject JNICALL Java_com_sentinel_v2x_V2X_processMessage(
  *   public static native List<DecodedV2XMessage> processBatch(List<byte[]> messages);
  */
 JNIEXPORT jobject JNICALL Java_com_sentinel_v2x_V2X_processBatch(
-    JNIEnv* env, jclass clazz, jobject messageList
+    JNIEnv* env, jclass /*clazz*/, jobject messageList
 ) {
     try {
         if (messageList == nullptr) {
@@ -595,20 +594,29 @@ JNIEXPORT jobject JNICALL Java_com_sentinel_v2x_V2X_processBatch(
 
                 LOGI("Processing message %d (%zu bytes)", i, coer_data.size());
 
-                // Step 1: Parse COER container
-                COERMessage raw_msg = COERDecoder::parse(coer_data);
-                LOGI("COER parsing successful for message %d, payload size: %zu", i, raw_msg.payload.size());
+                V2XMessageProcessor processor;
+                const auto verification = processor.process_message(coer_data);
+                if (!verification.is_valid) {
+                    const std::string error = verification.error_message.empty()
+                        ? "Message verification failed"
+                        : verification.error_message;
+                    LOGE("Batch message %d failed verification: %s", i, error.c_str());
+                    env->DeleteLocalRef(messageObj);
+                    continue;
+                }
 
-                // Step 2: Detect frame type
-                MessageFrameType frame_type = COERDecoder::detect_frame_type(raw_msg.payload);
-                LOGI("Detected frame type %s for message %d",
+                if (!verification.decoded_message.has_value()) {
+                    LOGE("Batch message %d verified without a decoded message", i);
+                    env->DeleteLocalRef(messageObj);
+                    continue;
+                }
+
+                const auto& decoded = *verification.decoded_message;
+                const auto frame_type = verification.frame_type;
+                LOGI("Using processor-decoded frame type %s for message %d",
                      COERDecoder::frame_type_to_string(frame_type).c_str(), i);
 
-                // Step 3: Decode frame into structured data
-                DecodedV2XMessage decoded = COERDecoder::decode_frame(raw_msg.payload, frame_type);
-                LOGI("Frame decoded successfully for message %d", i);
-
-                // Step 4: Marshal to Java object
+                // Step 1: Marshal verified decoded data to Java object
                 jobject javaMessage = nullptr;
 
                 switch (frame_type) {

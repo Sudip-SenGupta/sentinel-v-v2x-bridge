@@ -492,6 +492,25 @@ std::vector<std::vector<uint8_t>> COERDecoder::extract_certificate_chain(const C
     return message.signature_container.cert_chain;
 }
 
+SignedMessageComponents COERDecoder::extract_signed_components(const COERMessage& message) {
+    if (!message.is_signed()) {
+        throw COERFormatException("Cannot extract signed components from unsigned message");
+    }
+    if (message.signature_container.signature.empty()) {
+        throw COERFormatException("Message signature is empty");
+    }
+    if (message.signature_container.issuer_cert.empty()) {
+        throw COERFormatException("Issuer certificate is missing");
+    }
+
+    SignedMessageComponents components;
+    components.payload = &message.payload;
+    components.signature = &message.signature_container.signature;
+    components.issuer_cert = &message.signature_container.issuer_cert;
+    components.cert_chain = &message.signature_container.cert_chain;
+    return components;
+}
+
 const std::vector<uint8_t>& COERDecoder::get_payload(const COERMessage& message) {
     return message.payload;
 }

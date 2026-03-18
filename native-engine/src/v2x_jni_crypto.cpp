@@ -36,7 +36,7 @@ static std::unique_ptr<V2XCryptoEngine> g_crypto_engine = nullptr;
  * Returns: true if Botan initialized successfully
  */
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_sentinel_v2x_V2X_cryptoInitialize(JNIEnv* env, jclass clazz) {
+Java_com_sentinel_v2x_V2X_cryptoInitialize(JNIEnv* /*env*/, jclass /*clazz*/) {
     try {
         LOGI("Initializing V2X Crypto Engine");
         if (!g_crypto_engine) {

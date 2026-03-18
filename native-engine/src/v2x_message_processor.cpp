@@ -16,11 +16,20 @@ MessageVerificationResult V2XMessageProcessor::process_message(
         COERMessage msg;
         try {
             msg = COERDecoder::parse(raw_message);
-            result.coer_parse_ok = true;
         } catch (const COERDecodeException& e) {
             result.error_message = "COER parse failed: " + std::string(e.what());
             return result;
         }
+
+        // Structural validation belongs to the decoder contract, not the
+        // message processor. Keep this as an explicit post-parse gate so
+        // Phase 3 refactors can tighten decoder ownership without changing
+        // the higher-level verification pipeline.
+        if (!COERDecoder::validate_structure(msg)) {
+            result.error_message = "COER structure validation failed";
+            return result;
+        }
+        result.coer_parse_ok = true;
 
         // ===== STAGE 2: PAYLOAD STRUCTURE VALIDATION =====
         // Current Android test fixtures carry raw parser-compatible frame payloads rather than
@@ -42,39 +51,19 @@ MessageVerificationResult V2XMessageProcessor::process_message(
         // ===== STAGE 3 & 4: CRYPTOGRAPHIC VERIFICATION =====
         if (msg.is_signed()) {
             try {
-                // Extract components
-                result.payload = COERDecoder::get_payload(msg);
-
-                // Note: get_payload() may throw if invalid message
-                // This is caught by outer try-catch
-
-                // Extract signature
+                SignedMessageComponents signed_components;
                 try {
-                    result.signature = COERDecoder::extract_signature(msg);
+                    signed_components = COERDecoder::extract_signed_components(msg);
                 } catch (const std::exception& e) {
-                    result.error_message = "Failed to extract signature: " +
+                    result.error_message = "Failed to extract signed components: " +
                         std::string(e.what());
                     return result;
                 }
 
-                // Extract issuer certificate
-                std::vector<uint8_t> issuer_cert;
-                try {
-                    issuer_cert = COERDecoder::extract_issuer_certificate(msg);
-                } catch (const std::exception& e) {
-                    result.error_message = "Failed to extract issuer certificate: " +
-                        std::string(e.what());
-                    return result;
-                }
-
-                // Extract certificate chain
-                try {
-                    result.chain = COERDecoder::extract_certificate_chain(msg);
-                } catch (const std::exception& e) {
-                    result.error_message = "Failed to extract certificate chain: " +
-                        std::string(e.what());
-                    return result;
-                }
+                result.payload = *signed_components.payload;
+                result.signature = *signed_components.signature;
+                result.chain = *signed_components.cert_chain;
+                const auto& issuer_cert = *signed_components.issuer_cert;
 
                 // STAGE 3: Verify signature
                 bool sig_valid = false;
@@ -141,6 +130,18 @@ MessageVerificationResult V2XMessageProcessor::process_message(
                     std::string(e.what());
                 return result;
             }
+        }
+
+        // ===== STAGE 5: FRAME DETECTION AND DECODE =====
+        try {
+            result.frame_type = COERDecoder::detect_frame_type(result.payload);
+            DecodedV2XMessage decoded = COERDecoder::decode_frame(result.payload, result.frame_type);
+            decoded.is_verified = true;
+            decoded.issuer_name = msg.is_signed() ? "certificate-chain-verified" : "unsigned";
+            result.decoded_message = std::move(decoded);
+        } catch (const std::exception& e) {
+            result.error_message = "Frame decode failed: " + std::string(e.what());
+            return result;
         }
 
         // ===== ALL STAGES PASSED =====
