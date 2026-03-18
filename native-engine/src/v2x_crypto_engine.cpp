@@ -14,6 +14,8 @@
 #include <sstream>
 #include <iomanip>
 #include <chrono>
+#include <cstdarg>
+#include <cstdio>
 #include <iostream>
 #include <mutex>
 
@@ -25,10 +27,35 @@
     #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
     #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 #else
-    // Fallback to std::cout for non-Android builds
-    #define LOGI(...) do { std::cout << "[INFO] " << std::string(__VA_ARGS__) << std::endl; } while(0)
-    #define LOGE(...) do { std::cerr << "[ERROR] " << std::string(__VA_ARGS__) << std::endl; } while(0)
-    #define LOGD(...) do { std::cout << "[DEBUG] " << std::string(__VA_ARGS__) << std::endl; } while(0)
+namespace {
+
+void log_formatted(std::ostream& stream, const char* level, const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    va_list args_copy;
+    va_copy(args_copy, args);
+
+    const int required = std::vsnprintf(nullptr, 0, fmt, args_copy);
+    va_end(args_copy);
+
+    if(required < 0) {
+        va_end(args);
+        stream << '[' << level << "] " << fmt << std::endl;
+        return;
+    }
+
+    std::string message(static_cast<size_t>(required), ' ');
+    std::vsnprintf(message.data(), message.size() + 1, fmt, args);
+    va_end(args);
+
+    stream << '[' << level << "] " << message << std::endl;
+}
+
+}  // namespace
+
+    #define LOGI(...) do { log_formatted(std::cout, "INFO", __VA_ARGS__); } while(0)
+    #define LOGE(...) do { log_formatted(std::cerr, "ERROR", __VA_ARGS__); } while(0)
+    #define LOGD(...) do { log_formatted(std::cout, "DEBUG", __VA_ARGS__); } while(0)
 #endif
 
 namespace {
