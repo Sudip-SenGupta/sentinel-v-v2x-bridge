@@ -41,7 +41,7 @@ class COERDecoder;
 /** IEEE 1609.2 Protocol Version (2016) */
 constexpr uint8_t COER_PROTOCOL_VERSION = 3;
 
-/** Message Type Bits (IEEE 1609.2-2016 §4.2.1) */
+/** Message Type Bits (IEEE 1609.2-2016 Section 4.2.1) */
 enum class MessageType : uint8_t {
     UNSECURED              = 0x00,  /** No signature or encryption */
     SIGNED                 = 0x02,  /** Integrity protection (ECDSA signature) */
@@ -622,85 +622,6 @@ public:
      * @param message Parsed COERMessage to log
      */
     static void log_message_structure(const COERMessage& message);
-    
-    // ========================================================================
-    // Phase 4: Message Frame Type Identification (NEW)
-    // ========================================================================
-    
-    /**
-     * Detect message frame type from payload
-     * 
-     * Examines the raw payload bytes to identify the V2X message type
-     * (BSM, SPaT, PSM, etc.) using IEEE 1609.2 frame identifiers.
-     * 
-     * This is the FIRST STEP in decoding actual V2X data:
-     *   1. parse() → Extract COER structure
-     *   2. detect_frame_type() → Identify message type
-     *   3. decode_frame() → Convert to structured data
-     * 
-     * @param payload Raw V2X payload bytes (from COERMessage.payload)
-     * 
-     * @return MessageFrameType enum value
-     * @return Returns UNKNOWN if frame type cannot be detected
-     * 
-     * @throws COERBufferException if payload is too short
-     * 
-     * @example
-     * @code
-     *   COERMessage msg = COERDecoder::parse(raw_data);
-     *   MessageFrameType frame_type = COERDecoder::detect_frame_type(msg.payload);
-     *   
-     *   if (frame_type == MessageFrameType::BSM) {
-     *       // Decode as Basic Safety Message
-     *   }
-     * @endcode
-     */
-    static MessageFrameType detect_frame_type(const std::vector<uint8_t>& payload);
-    
-    /**
-     * Decode payload into structured V2X message
-     * 
-     * Converts raw COER-encoded payload into a structured object with
-     * typed fields (position, speed, heading, etc.).
-     * 
-     * This relies on detect_frame_type() to identify the message structure.
-     * Unsupported frame types return DecodedV2XMessage with frame_type=UNKNOWN.
-     * 
-     * @param payload Raw payload from COERMessage::payload
-     * @param frame_type Message type (typically from detect_frame_type())
-     * 
-     * @return DecodedV2XMessage with decoded fields
-     * 
-     * @throws COERFormatException if payload structure is invalid
-     * @throws COERBufferException if payload is truncated
-     * 
-     * @example
-     * @code
-     *   COERMessage msg = COERDecoder::parse(raw_data);
-     *   auto frame_type = COERDecoder::detect_frame_type(msg.payload);
-     *   auto decoded = COERDecoder::decode_frame(msg.payload, frame_type);
-     *   
-     *   if (decoded.frame_type == MessageFrameType::BSM) {
-     *       double lat = decoded.payload.bsm.position.latitude;
-     *       double lon = decoded.payload.bsm.position.longitude;
-     *       float speed = decoded.payload.bsm.motion.speed;
-     *       LOGI("Vehicle at (%.6f, %.6f) moving at %.1f m/s",
-     *            lat, lon, speed);
-     *   }
-     * @endcode
-     */
-    static DecodedV2XMessage decode_frame(
-        const std::vector<uint8_t>& payload,
-        MessageFrameType frame_type
-    );
-    
-    /**
-     * Get frame type name as human-readable string
-     * 
-     * @param frame_type MessageFrameType enum value
-     * @return String like "BSM (Basic Safety Message)"
-     */
-    static std::string frame_type_to_string(MessageFrameType frame_type);
 };
 
 

@@ -19,6 +19,7 @@
 #include <iostream>
 #include <iomanip>
 #include "v2x_coer_decoder.h"
+#include "v2x_frame_decoder.h"
 #include "v2x_structures.hpp"
 
 using namespace sentinel::v2x;
@@ -278,13 +279,13 @@ TEST_F(V2XMessageIntegrationTest, BSMPipeline_MinimalMessage) {
     COERMessage raw_msg = COERDecoder::parse(coer_message);
     
     // Step 2: Detect frame type
-    MessageFrameType frame_type = COERDecoder::detect_frame_type(raw_msg.payload);
+    MessageFrameType frame_type = V2XFrameDecoder::detect_frame_type(raw_msg.payload);
     EXPECT_EQ(frame_type, MessageFrameType::BSM);
-    std::cout << "✓ Frame type detected: " << COERDecoder::frame_type_to_string(frame_type) << std::endl;
+    std::cout << "✓ Frame type detected: " << V2XFrameDecoder::frame_type_to_string(frame_type) << std::endl;
     
     // Step 3: Decode frame
     ASSERT_NO_THROW({
-        DecodedV2XMessage decoded = COERDecoder::decode_frame(raw_msg.payload, frame_type);
+        DecodedV2XMessage decoded = V2XFrameDecoder::decode(raw_msg.payload, frame_type);
         EXPECT_EQ(decoded.frame_type, MessageFrameType::BSM);
         std::cout << "✓ Frame decoded successfully" << std::endl;
     });

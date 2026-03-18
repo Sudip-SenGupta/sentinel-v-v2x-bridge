@@ -1,5 +1,6 @@
 #include "v2x_message_processor.h"
 #include "v2x_coer_decoder.h"
+#include "v2x_frame_decoder.h"
 #include "v2x_payload_validator.h"
 #include "v2x_crypto_engine.h"
 
@@ -134,8 +135,8 @@ MessageVerificationResult V2XMessageProcessor::process_message(
 
         // ===== STAGE 5: FRAME DETECTION AND DECODE =====
         try {
-            result.frame_type = COERDecoder::detect_frame_type(result.payload);
-            DecodedV2XMessage decoded = COERDecoder::decode_frame(result.payload, result.frame_type);
+            result.frame_type = V2XFrameDecoder::detect_frame_type(result.payload);
+            DecodedV2XMessage decoded = V2XFrameDecoder::decode(result.payload, result.frame_type);
             decoded.is_verified = true;
             decoded.issuer_name = msg.is_signed() ? "certificate-chain-verified" : "unsigned";
             result.decoded_message = std::move(decoded);

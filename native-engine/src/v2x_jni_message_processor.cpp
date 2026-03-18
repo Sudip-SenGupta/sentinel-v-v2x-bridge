@@ -16,6 +16,7 @@
 #include <vector>
 #include <android/log.h>
 #include "v2x_coer_decoder.h"
+#include "v2x_frame_decoder.h"
 #include "v2x_message_processor.h"
 #include "v2x_structures.hpp"
 
@@ -443,10 +444,10 @@ JNIEXPORT jstring JNICALL Java_com_sentinel_v2x_V2X_detectFrameType(
         COERMessage msg = COERDecoder::parse(payload);
 
         // Detect frame type
-        MessageFrameType frame_type = COERDecoder::detect_frame_type(msg.payload);
+        MessageFrameType frame_type = V2XFrameDecoder::detect_frame_type(msg.payload);
 
         // Convert to string
-        std::string frame_str = COERDecoder::frame_type_to_string(frame_type);
+        std::string frame_str = V2XFrameDecoder::frame_type_to_string(frame_type);
 
         return env->NewStringUTF(frame_str.c_str());
     } catch (const std::exception& e) {
@@ -496,7 +497,7 @@ JNIEXPORT jobject JNICALL Java_com_sentinel_v2x_V2X_processMessage(
 
         const auto& decoded = *verification.decoded_message;
         const auto frame_type = verification.frame_type;
-        LOGI("Using processor-decoded frame type: %s", COERDecoder::frame_type_to_string(frame_type).c_str());
+        LOGI("Using processor-decoded frame type: %s", V2XFrameDecoder::frame_type_to_string(frame_type).c_str());
 
         // Step 1: Marshal verified decoded data to Java object
         jobject result = nullptr;
@@ -614,7 +615,7 @@ JNIEXPORT jobject JNICALL Java_com_sentinel_v2x_V2X_processBatch(
                 const auto& decoded = *verification.decoded_message;
                 const auto frame_type = verification.frame_type;
                 LOGI("Using processor-decoded frame type %s for message %d",
-                     COERDecoder::frame_type_to_string(frame_type).c_str(), i);
+                     V2XFrameDecoder::frame_type_to_string(frame_type).c_str(), i);
 
                 // Step 1: Marshal verified decoded data to Java object
                 jobject javaMessage = nullptr;

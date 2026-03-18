@@ -3,7 +3,7 @@
 ## Purpose
 
 This note captures the actual Phase 3 starting point on `feature/phase-3-coer-decoder`.
-It describes what the decoder does today, which files own the current behavior, and what should be cleaned up first before larger decoder changes are attempted.
+It describes what the decoder does today, which files own the current behavior, and what has already been cleaned up before larger decoder changes are attempted.
 
 Related docs:
 - [Architecture](architecture.md) for the system structure around the decoder path
@@ -66,18 +66,32 @@ Current responsibilities:
 
 Current responsibilities:
 - call `COERDecoder::parse(...)`
+- enforce decoder-owned structure validation
 - apply payload validation policy
-- extract payload, signature, issuer cert, and chain
 - invoke native crypto verification and chain validation
-- return fail-closed verification results
+- call `V2XFrameDecoder` for verified frame interpretation
+- return fail-closed verification results with decoded output
 
 ### Payload frame decoding
+- `native-engine/include/v2x_frame_decoder.h`
 - `native-engine/src/v2x_message_frame.cpp`
 
 Current responsibilities:
 - detect frame type from payload bytes
 - decode BSM, SPaT, and PSM payload structures
 - apply project-specific payload layout assumptions
+- keep frame interpretation separate from envelope parsing
+
+## Completed In This Slice
+
+The current Phase 3 branch has already completed a first ownership-cleanup slice:
+- `V2XMessageProcessor` now enforces decoder structure validation immediately after parse
+- signed-component extraction is centralized behind `COERDecoder::extract_signed_components(...)`
+- `MessageVerificationResult` now carries decoded output for verified messages
+- JNI `processMessage(...)` no longer reparses and redecodes verified COER bytes
+- JNI `processBatch(...)` no longer reparses and redecodes verified COER bytes
+- `V2XFrameDecoder` now owns frame type detection and frame decoding
+- the Phase 1 regression gate still passes at `67` Android instrumentation tests
 
 ## Current Validation Behavior
 
@@ -100,12 +114,14 @@ The current design does not yet imply:
 - the decoder is real and exercised by Android instrumentation coverage
 - signed-message extraction already feeds the crypto engine successfully
 - malformed input coverage is already broad enough to support controlled refactoring
+- the processor and JNI layers now have a cleaner verified-message boundary
+- frame interpretation now has an explicit `V2XFrameDecoder` boundary
 
 ### What is currently messy
 - parsing knowledge is split across decoder, message processor, and frame decoder
 - some comments and naming overstate IEEE 1609.2 generality
 - payload semantics and parser contract are mixed together in places
-- the current decoder contract is implemented, but not yet explicitly treated as the Phase 3 baseline contract
+- the current decoder contract is implemented, but not yet explicitly treated as the current Phase 3 ownership model
 
 ## First Refactor Targets
 
@@ -121,7 +137,7 @@ Definition of done for this target:
 
 ### Target 2: Clarify parsing ownership by file
 - `v2x_coer_decoder.cpp` should own raw message parsing and signed-container extraction
-- `v2x_message_processor.cpp` should own verification orchestration, not parsing details
+- `v2x_message_processor.cpp` should own verification orchestration and verified decoded output
 - `v2x_message_frame.cpp` should own frame decoding, not top-level message parsing semantics
 
 Definition of done for this target:
@@ -139,8 +155,8 @@ Definition of done for this target:
 ## Recommended Next Step
 
 The recommended next implementation step is:
-- formalize the current custom decoder as the Phase 3 baseline
-- then perform a narrow refactor to cleanly separate parser ownership from message-processing ownership
+- record the completed decoder and frame-boundary cleanup as the current Phase 3 baseline
+- then decide the next ownership cut without changing the wire contract
 
 This is safer than either:
 - rewriting the decoder immediately
@@ -148,9 +164,9 @@ This is safer than either:
 
 ## Suggested Immediate Work Items
 
-1. Write down the current decoder contract in code comments and docs without overstating standards completeness.
-2. Review `v2x_coer_decoder.cpp` and `v2x_message_processor.cpp` for responsibility overlap.
-3. Identify any parsing decisions that still live outside `v2x_coer_decoder.cpp` and decide whether they should move.
+1. Keep the Phase 3 baseline note aligned with the implemented `V2XFrameDecoder` boundary.
+2. Review `v2x_coer_decoder.cpp`, `v2x_frame_decoder.h`, and `v2x_message_frame.cpp` for any remaining ownership leakage.
+3. Decide the next small refactor cut without changing the wire contract or JNI behavior.
 4. Only after that, decide whether a library evaluation is still justified.
 
 ## Library Evaluation Gate
@@ -168,3 +184,19 @@ This keeps the initial Phase 3 effort focused on formalizing and cleaning up the
 
 All Phase 3 refactoring must preserve the existing 67-test Android instrumentation baseline.
 The current validated suite remains the non-regression gate for decoder ownership changes, parser refactors, and signed-message extraction cleanup.
+
+## Agreed Next Refactor Plan
+
+The next Phase 3 structural cut should preserve the current behavior and 67-test regression baseline while continuing to reduce ownership leakage between envelope parsing, frame interpretation, and higher-level orchestration.
+
+### Current Boundary
+- `COERDecoder` owns envelope parsing, signed-container extraction, and structure validation
+- `V2XFrameDecoder` owns frame-type detection and payload-to-frame decoding
+- `V2XMessageProcessor` owns orchestration, verification, and verified decoded output
+- JNI now marshals processor results instead of reparsing the message
+
+### Non-Goals
+- no change to the current wire contract
+- no semantic validation expansion in this slice
+- no crypto-policy changes
+- no library-evaluation work until the current custom decoder boundary is fully stabilized

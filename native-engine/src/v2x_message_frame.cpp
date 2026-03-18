@@ -15,6 +15,7 @@
  * @version 1.0.0
  */
 
+#include "v2x_frame_decoder.h"
 #include "v2x_coer_decoder.h"
 #include "v2x_structures.hpp"
 #include <cstring>
@@ -28,7 +29,7 @@ namespace sentinel::v2x {
 // Message Frame Type Detection
 // ============================================================================
 
-MessageFrameType COERDecoder::detect_frame_type(const std::vector<uint8_t>& payload) {
+MessageFrameType V2XFrameDecoder::detect_frame_type(const std::vector<uint8_t>& payload) {
     /**
      * IEEE 1609.2 Frame Format:
      * 
@@ -317,7 +318,7 @@ static PersonalSafetyMessage decode_psm(const std::vector<uint8_t>& payload) {
 // Main Frame Decoding Function
 // ============================================================================
 
-DecodedV2XMessage COERDecoder::decode_frame(
+DecodedV2XMessage V2XFrameDecoder::decode(
     const std::vector<uint8_t>& payload,
     MessageFrameType frame_type
 ) {
@@ -358,7 +359,7 @@ DecodedV2XMessage COERDecoder::decode_frame(
 // Utility Functions
 // ============================================================================
 
-std::string COERDecoder::frame_type_to_string(MessageFrameType frame_type) {
+std::string V2XFrameDecoder::frame_type_to_string(MessageFrameType frame_type) {
     switch (frame_type) {
         case MessageFrameType::BSM:     return "BSM (Basic Safety Message)";
         case MessageFrameType::SPAT:    return "SPaT (Signal Phase & Timing)";
