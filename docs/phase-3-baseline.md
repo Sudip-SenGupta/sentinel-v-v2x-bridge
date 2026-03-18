@@ -84,7 +84,7 @@ Current responsibilities:
 
 ## Completed In This Slice
 
-The current Phase 3 branch has already completed two structural cleanup slices:
+The current Phase 3 branch has already completed two structural cleanup slices plus a decoder-only coverage expansion:
 - `V2XMessageProcessor` now enforces decoder structure validation immediately after parse
 - signed-component extraction is centralized behind `COERDecoder::extract_signed_components(...)`
 - `MessageVerificationResult` now carries decoded output for verified messages
@@ -92,6 +92,7 @@ The current Phase 3 branch has already completed two structural cleanup slices:
 - JNI `processBatch(...)` no longer reparses and redecodes verified COER bytes
 - `V2XFrameDecoder` now owns frame type detection and frame decoding
 - native off-target boundary tests now cover parser-valid unknown frame types, frame-layer detection failures, and decoded output from `V2XMessageProcessor`
+- decoder-only coverage now locks down `extract_signed_components(...)` and signed-container truncation failures in `test_coer_decoder_vectors.cpp`
 - the non-Android logging fallback in `v2x_crypto_engine.cpp` now supports the existing printf-style logging call sites
 - the native off-target test target passes
 - the Android Phase 1 regression gate still passes at `67` instrumentation tests
@@ -105,6 +106,7 @@ The current decoder and processor path already enforce:
 - basic structure validation on signature and certificate fields
 - fail-closed signed-message processing through the native verification pipeline
 - separate frame-layer handling for unknown frame types and frame-detection failures
+- decoder-owned signed-component extraction and signed-container truncation handling covered by off-target tests
 
 The current design does not yet imply:
 - general IEEE 1609.2 interoperability
@@ -121,6 +123,7 @@ The current design does not yet imply:
 - the processor and JNI layers now have a cleaner verified-message boundary
 - frame interpretation now has an explicit `V2XFrameDecoder` boundary
 - native off-target coverage now exists for the parser/frame boundary in addition to the Android regression gate
+- decoder-only tests now cover signed-component extraction and malformed signed-container edges directly
 
 ### What is currently messy
 - parsing knowledge is split across decoder, message processor, and frame decoder
@@ -169,9 +172,9 @@ This is safer than either:
 
 ## Suggested Immediate Work Items
 
-1. Keep the Phase 3 baseline note aligned with the implemented `V2XFrameDecoder` boundary and the native off-target tests.
+1. Keep the Phase 3 baseline note aligned with the implemented `V2XFrameDecoder` boundary and the expanded native off-target tests.
 2. Review `v2x_coer_decoder.cpp`, `v2x_frame_decoder.h`, and `v2x_message_frame.cpp` for any remaining ownership leakage.
-3. Decide whether the next cut should be decoder-only tests or a small API-shape cleanup.
+3. Treat the next cut as an API-shape cleanup unless a new decoder-only gap is found.
 4. Only after that, decide whether a library evaluation is still justified.
 
 ## Library Evaluation Gate
@@ -200,6 +203,7 @@ The next Phase 3 structural cut should preserve the current behavior and 67-test
 - `V2XMessageProcessor` owns orchestration, verification, and verified decoded output
 - JNI now marshals processor results instead of reparsing the message
 - native off-target tests exercise the parser/frame boundary directly
+- decoder-only vector tests exercise signed-component extraction and malformed signed-container handling directly
 
 ### Non-Goals
 - no change to the current wire contract

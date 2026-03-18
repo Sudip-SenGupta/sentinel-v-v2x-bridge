@@ -334,6 +334,36 @@ TEST_F(COERDecoderTest, ExtractFromUnsignedMessageThrows) {
     EXPECT_THROW(COERDecoder::extract_issuer_certificate(msg), COERFormatException);
 }
 
+/**
+ * @test extract_signed_components returns the same data as the legacy accessors
+ *
+ * This locks in the decoder-owned component handoff introduced during Phase 3.
+ */
+TEST_F(COERDecoderTest, ExtractSignedComponentsMatchesLegacyAccessors) {
+    COERMessage msg = parse_hex_message(SIGNED_TYPICAL_BSM_HEX);
+
+    SignedMessageComponents components = COERDecoder::extract_signed_components(msg);
+
+    ASSERT_NE(components.payload, nullptr);
+    ASSERT_NE(components.signature, nullptr);
+    ASSERT_NE(components.issuer_cert, nullptr);
+    ASSERT_NE(components.cert_chain, nullptr);
+
+    EXPECT_EQ(*components.payload, COERDecoder::get_payload(msg));
+    EXPECT_EQ(*components.signature, COERDecoder::extract_signature(msg));
+    EXPECT_EQ(*components.issuer_cert, COERDecoder::extract_issuer_certificate(msg));
+    EXPECT_EQ(*components.cert_chain, COERDecoder::extract_certificate_chain(msg));
+}
+
+/**
+ * @test extract_signed_components rejects unsigned messages
+ */
+TEST_F(COERDecoderTest, ExtractSignedComponentsFromUnsignedMessageThrows) {
+    COERMessage msg = parse_hex_message(UNSIGNED_MINIMAL_HEX);
+    EXPECT_THROW(COERDecoder::extract_signed_components(msg), COERFormatException);
+}
+
+
 // ============================================================================
 // Test Suite 4: Error Handling (Malformed Messages)
 // ============================================================================
@@ -456,6 +486,44 @@ TEST_F(COERDecoderTest, IncompleteHeaderErrorDiagnostic) {
             << "Error message should indicate incomplete header: " << error_msg;
     }
 }
+
+/**
+ * @test Truncated signature bytes in a signed message throw buffer exception
+ */
+TEST_F(COERDecoderTest, TruncatedSignedMessageSignatureThrows) {
+    const std::vector<uint8_t> raw_message = {
+        0x32,
+        0x03,
+        0x10, 0x00, 0x00,
+        0x04,
+        0x02,
+        0xAA
+    };
+
+    EXPECT_THROW(COERDecoder::parse(raw_message), COERBufferException);
+}
+
+/**
+ * @test Truncated chain certificate bytes in a signed message throw buffer exception
+ */
+TEST_F(COERDecoderTest, TruncatedSignedMessageChainEntryThrows) {
+    const std::vector<uint8_t> raw_message = {
+        0x32,
+        0x03,
+        0x10, 0x00, 0x00,
+        0x04,
+        0x02,
+        0xAA, 0xBB,
+        0x02,
+        0x30, 0x31,
+        0x01,
+        0x02,
+        0xCC
+    };
+
+    EXPECT_THROW(COERDecoder::parse(raw_message), COERBufferException);
+}
+
 
 // ============================================================================
 // Test Suite 5: Utility Functions
