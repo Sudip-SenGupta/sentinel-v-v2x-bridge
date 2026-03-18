@@ -84,14 +84,17 @@ Current responsibilities:
 
 ## Completed In This Slice
 
-The current Phase 3 branch has already completed a first ownership-cleanup slice:
+The current Phase 3 branch has already completed two structural cleanup slices:
 - `V2XMessageProcessor` now enforces decoder structure validation immediately after parse
 - signed-component extraction is centralized behind `COERDecoder::extract_signed_components(...)`
 - `MessageVerificationResult` now carries decoded output for verified messages
 - JNI `processMessage(...)` no longer reparses and redecodes verified COER bytes
 - JNI `processBatch(...)` no longer reparses and redecodes verified COER bytes
 - `V2XFrameDecoder` now owns frame type detection and frame decoding
-- the Phase 1 regression gate still passes at `67` Android instrumentation tests
+- native off-target boundary tests now cover parser-valid unknown frame types, frame-layer detection failures, and decoded output from `V2XMessageProcessor`
+- the non-Android logging fallback in `v2x_crypto_engine.cpp` now supports the existing printf-style logging call sites
+- the native off-target test target passes
+- the Android Phase 1 regression gate still passes at `67` instrumentation tests
 
 ## Current Validation Behavior
 
@@ -101,6 +104,7 @@ The current decoder and processor path already enforce:
 - signed-container truncation rejection
 - basic structure validation on signature and certificate fields
 - fail-closed signed-message processing through the native verification pipeline
+- separate frame-layer handling for unknown frame types and frame-detection failures
 
 The current design does not yet imply:
 - general IEEE 1609.2 interoperability
@@ -116,6 +120,7 @@ The current design does not yet imply:
 - malformed input coverage is already broad enough to support controlled refactoring
 - the processor and JNI layers now have a cleaner verified-message boundary
 - frame interpretation now has an explicit `V2XFrameDecoder` boundary
+- native off-target coverage now exists for the parser/frame boundary in addition to the Android regression gate
 
 ### What is currently messy
 - parsing knowledge is split across decoder, message processor, and frame decoder
@@ -155,8 +160,8 @@ Definition of done for this target:
 ## Recommended Next Step
 
 The recommended next implementation step is:
-- record the completed decoder and frame-boundary cleanup as the current Phase 3 baseline
-- then decide the next ownership cut without changing the wire contract
+- treat the current decoder, processor, and frame-decoder split as the active Phase 3 baseline
+- then choose the next small decoder-only or ownership-focused cut without changing the wire contract
 
 This is safer than either:
 - rewriting the decoder immediately
@@ -164,9 +169,9 @@ This is safer than either:
 
 ## Suggested Immediate Work Items
 
-1. Keep the Phase 3 baseline note aligned with the implemented `V2XFrameDecoder` boundary.
+1. Keep the Phase 3 baseline note aligned with the implemented `V2XFrameDecoder` boundary and the native off-target tests.
 2. Review `v2x_coer_decoder.cpp`, `v2x_frame_decoder.h`, and `v2x_message_frame.cpp` for any remaining ownership leakage.
-3. Decide the next small refactor cut without changing the wire contract or JNI behavior.
+3. Decide whether the next cut should be decoder-only tests or a small API-shape cleanup.
 4. Only after that, decide whether a library evaluation is still justified.
 
 ## Library Evaluation Gate
@@ -194,6 +199,7 @@ The next Phase 3 structural cut should preserve the current behavior and 67-test
 - `V2XFrameDecoder` owns frame-type detection and payload-to-frame decoding
 - `V2XMessageProcessor` owns orchestration, verification, and verified decoded output
 - JNI now marshals processor results instead of reparsing the message
+- native off-target tests exercise the parser/frame boundary directly
 
 ### Non-Goals
 - no change to the current wire contract
