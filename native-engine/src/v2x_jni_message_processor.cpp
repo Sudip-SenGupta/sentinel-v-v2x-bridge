@@ -442,9 +442,10 @@ JNIEXPORT jstring JNICALL Java_com_sentinel_v2x_V2X_detectFrameType(
 
         // Parse COER message
         COERMessage msg = COERDecoder::parse(payload);
+        const auto& decoded_payload = COERDecoder::get_payload(msg);
 
         // Detect frame type
-        MessageFrameType frame_type = V2XFrameDecoder::detect_frame_type(msg.payload);
+        MessageFrameType frame_type = V2XFrameDecoder::detect_frame_type(decoded_payload);
 
         // Convert to string
         std::string frame_str = V2XFrameDecoder::frame_type_to_string(frame_type);

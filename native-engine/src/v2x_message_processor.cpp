@@ -32,13 +32,15 @@ MessageVerificationResult V2XMessageProcessor::process_message(
         }
         result.coer_parse_ok = true;
 
+        const auto& payload = COERDecoder::get_payload(msg);
+
         // ===== STAGE 2: PAYLOAD STRUCTURE VALIDATION =====
         // Current Android test fixtures carry raw parser-compatible frame payloads rather than
         // DER-wrapped application payloads. Validate DER only when the payload is actually tagged
         // as a DER SEQUENCE and otherwise allow the parser-compatible payload contract through.
-        if (msg.is_signed() && !msg.payload.empty() && msg.payload[0] == 0x30) {
+        if (msg.is_signed() && !payload.empty() && payload[0] == 0x30) {
             try {
-                PayloadValidator::validate_der_structure(msg.payload);
+                PayloadValidator::validate_der_structure(payload);
                 result.payload_structure_ok = true;
             } catch (const PayloadValidationException& e) {
                 result.error_message = "Payload validation failed: " +
@@ -123,7 +125,7 @@ MessageVerificationResult V2XMessageProcessor::process_message(
         } else {
             // Unsigned message: extract payload only
             try {
-                result.payload = COERDecoder::get_payload(msg);
+                result.payload = payload;
                 result.signature_valid = true;  // Not checked
                 result.chain_valid = true;      // Not checked
             } catch (const std::exception& e) {

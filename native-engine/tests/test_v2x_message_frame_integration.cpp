@@ -272,25 +272,26 @@ TEST_F(V2XMessageIntegrationTest, BSMPipeline_MinimalMessage) {
     // Step 1: Parse COER container
     ASSERT_NO_THROW({
         COERMessage raw_msg = COERDecoder::parse(coer_message);
-        EXPECT_FALSE(raw_msg.payload.empty());
+        EXPECT_FALSE(COERDecoder::get_payload(raw_msg).empty());
         std::cout << "✓ COER parsing successful" << std::endl;
     });
     
     COERMessage raw_msg = COERDecoder::parse(coer_message);
+    const auto& payload = COERDecoder::get_payload(raw_msg);
     
     // Step 2: Detect frame type
-    MessageFrameType frame_type = V2XFrameDecoder::detect_frame_type(raw_msg.payload);
+    MessageFrameType frame_type = V2XFrameDecoder::detect_frame_type(payload);
     EXPECT_EQ(frame_type, MessageFrameType::BSM);
     std::cout << "✓ Frame type detected: " << V2XFrameDecoder::frame_type_to_string(frame_type) << std::endl;
     
     // Step 3: Decode frame
     ASSERT_NO_THROW({
-        DecodedV2XMessage decoded = V2XFrameDecoder::decode(raw_msg.payload, frame_type);
+        DecodedV2XMessage decoded = V2XFrameDecoder::decode(payload, frame_type);
         EXPECT_EQ(decoded.frame_type, MessageFrameType::BSM);
         std::cout << "✓ Frame decoded successfully" << std::endl;
     });
     
-    DecodedV2XMessage decoded = V2XFrameDecoder::decode(raw_msg.payload, frame_type);
+    DecodedV2XMessage decoded = V2XFrameDecoder::decode(payload, frame_type);
     
     // Step 4: Verify decoded fields
     const auto& bsm = std::get<BasicSafetyMessage>(decoded.payload);
@@ -328,12 +329,13 @@ TEST_F(V2XMessageIntegrationTest, SPaTpipeline_IntersectionState) {
     
     // Parse → Detect → Decode
     COERMessage raw_msg = COERDecoder::parse(coer_message);
-    MessageFrameType frame_type = V2XFrameDecoder::detect_frame_type(raw_msg.payload);
+    const auto& payload = COERDecoder::get_payload(raw_msg);
+    MessageFrameType frame_type = V2XFrameDecoder::detect_frame_type(payload);
     
     EXPECT_EQ(frame_type, MessageFrameType::SPAT);
     std::cout << "✓ Frame type detected: SPAT" << std::endl;
     
-    DecodedV2XMessage decoded = V2XFrameDecoder::decode(raw_msg.payload, frame_type);
+    DecodedV2XMessage decoded = V2XFrameDecoder::decode(payload, frame_type);
     
     const auto& spat = std::get<SignalPhaseAndTiming>(decoded.payload);
     EXPECT_FALSE(spat.intersections.empty());
@@ -363,12 +365,13 @@ TEST_F(V2XMessageIntegrationTest, PSMPipeline_PedestrianAlert) {
     auto coer_message = wrapInCOERContainer(psm_payload);
     
     COERMessage raw_msg = COERDecoder::parse(coer_message);
-    MessageFrameType frame_type = V2XFrameDecoder::detect_frame_type(raw_msg.payload);
+    const auto& payload = COERDecoder::get_payload(raw_msg);
+    MessageFrameType frame_type = V2XFrameDecoder::detect_frame_type(payload);
     
     EXPECT_EQ(frame_type, MessageFrameType::PSM);
     std::cout << "✓ Frame type detected: PSM" << std::endl;
     
-    DecodedV2XMessage decoded = V2XFrameDecoder::decode(raw_msg.payload, frame_type);
+    DecodedV2XMessage decoded = V2XFrameDecoder::decode(payload, frame_type);
     
     const auto& psm = std::get<PersonalSafetyMessage>(decoded.payload);
     EXPECT_EQ(psm.sender_id, "AA:BB:CC:DD:EE:FF");
@@ -397,7 +400,8 @@ TEST_F(V2XMessageIntegrationTest, InvalidFrameType_ReturnsUnknown) {
     auto coer_message = wrapInCOERContainer(invalid_payload);
     
     COERMessage raw_msg = COERDecoder::parse(coer_message);
-    MessageFrameType frame_type = V2XFrameDecoder::detect_frame_type(raw_msg.payload);
+    const auto& payload = COERDecoder::get_payload(raw_msg);
+    MessageFrameType frame_type = V2XFrameDecoder::detect_frame_type(payload);
     
     EXPECT_EQ(frame_type, MessageFrameType::UNKNOWN);
     std::cout << "✓ Invalid frame type correctly detected as UNKNOWN" << std::endl;
@@ -424,8 +428,9 @@ TEST_F(V2XMessageIntegrationTest, BENCHMARK_ProcessingPipeline) {
     // Warm-up
     for (int i = 0; i < 10; ++i) {
         COERMessage msg = COERDecoder::parse(coer_message);
-        MessageFrameType type = V2XFrameDecoder::detect_frame_type(msg.payload);
-        DecodedV2XMessage decoded = V2XFrameDecoder::decode(msg.payload, type);
+        const auto& payload = COERDecoder::get_payload(msg);
+        MessageFrameType type = V2XFrameDecoder::detect_frame_type(payload);
+        DecodedV2XMessage decoded = V2XFrameDecoder::decode(payload, type);
     }
     
     // Benchmark: Full pipeline
@@ -434,8 +439,9 @@ TEST_F(V2XMessageIntegrationTest, BENCHMARK_ProcessingPipeline) {
     
     for (int i = 0; i < iterations; ++i) {
         COERMessage msg = COERDecoder::parse(coer_message);
-        MessageFrameType type = V2XFrameDecoder::detect_frame_type(msg.payload);
-        DecodedV2XMessage decoded = V2XFrameDecoder::decode(msg.payload, type);
+        const auto& payload = COERDecoder::get_payload(msg);
+        MessageFrameType type = V2XFrameDecoder::detect_frame_type(payload);
+        DecodedV2XMessage decoded = V2XFrameDecoder::decode(payload, type);
     }
     
     auto end = std::chrono::high_resolution_clock::now();

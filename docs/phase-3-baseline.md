@@ -67,6 +67,7 @@ Current responsibilities:
 Current responsibilities:
 - call `COERDecoder::parse(...)`
 - enforce decoder-owned structure validation
+- access payload bytes through the decoder contract
 - apply payload validation policy
 - invoke native crypto verification and chain validation
 - call `V2XFrameDecoder` for verified frame interpretation
@@ -96,6 +97,7 @@ The current Phase 3 branch has already completed several structural cleanup slic
 - `COERDecoder`, `V2XFrameDecoder`, and `V2XMessageProcessor` are now explicitly non-instantiable utility classes
 - JNI now calls `V2XMessageProcessor::process_message(...)` consistently through the static API instead of constructing throwaway processor instances
 - `COERDecoder` helper surface is smaller: string-conversion helpers and `log_message_structure(...)` are now internal, while `set_debug_logging(...)` remains available for the native integration tests
+- `V2XMessageProcessor` now routes payload access through `COERDecoder::get_payload(...)` instead of reaching into parsed message state directly
 - the non-Android logging fallback in `v2x_crypto_engine.cpp` now supports the existing printf-style logging call sites
 - the native off-target test target passes
 - the Android Phase 1 regression gate still passes at `67` instrumentation tests
@@ -128,6 +130,7 @@ The current design does not yet imply:
 - native off-target coverage now exists for the parser/frame boundary in addition to the Android regression gate
 - decoder-only tests now cover signed-component extraction and malformed signed-container edges directly
 - utility-class intent is now explicit in the public headers, and JNI no longer pretends `V2XMessageProcessor` is stateful
+- payload access inside the processor now follows the decoder contract more consistently
 
 ### What is currently messy
 - parsing knowledge is split across decoder, message processor, and frame decoder
@@ -207,6 +210,7 @@ The next Phase 3 structural cut should preserve the current behavior and 67-test
 - `V2XMessageProcessor` owns orchestration, verification, and verified decoded output
 - JNI now marshals processor results instead of reparsing the message
 - JNI now uses the static processor API consistently
+- payload access now flows through `COERDecoder::get_payload(...)` instead of ad hoc field access in the processor
 - native off-target tests exercise the parser/frame boundary directly
 - decoder-only vector tests exercise signed-component extraction and malformed signed-container handling directly
 - decoder debug and string helpers are no longer all part of the public contract
