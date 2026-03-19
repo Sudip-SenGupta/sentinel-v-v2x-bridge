@@ -82,6 +82,7 @@ Current responsibilities:
 - decode BSM, SPaT, and PSM payload structures
 - apply project-specific payload layout assumptions
 - keep frame interpretation separate from envelope parsing
+- own frame-layer exception types instead of reusing decoder exceptions
 
 ## Completed In This Slice
 
@@ -92,6 +93,7 @@ The current Phase 3 branch has already completed several structural cleanup slic
 - JNI `processMessage(...)` no longer reparses and redecodes verified COER bytes
 - JNI `processBatch(...)` no longer reparses and redecodes verified COER bytes
 - `V2XFrameDecoder` now owns frame type detection and frame decoding
+- `V2XFrameDecoder` now owns frame-layer exception types and no longer depends on decoder exceptions
 - native off-target boundary tests now cover parser-valid unknown frame types, frame-layer detection failures, and decoded output from `V2XMessageProcessor`
 - decoder-only coverage now locks down `extract_signed_components(...)` and signed-container truncation failures in `test_coer_decoder_vectors.cpp`
 - `COERDecoder`, `V2XFrameDecoder`, and `V2XMessageProcessor` are now explicitly non-instantiable utility classes
@@ -127,6 +129,7 @@ The current design does not yet imply:
 - malformed input coverage is already broad enough to support controlled refactoring
 - the processor and JNI layers now have a cleaner verified-message boundary
 - frame interpretation now has an explicit `V2XFrameDecoder` boundary
+- frame failures now surface through frame-owned exceptions instead of decoder exceptions
 - native off-target coverage now exists for the parser/frame boundary in addition to the Android regression gate
 - decoder-only tests now cover signed-component extraction and malformed signed-container edges directly
 - utility-class intent is now explicit in the public headers, and JNI no longer pretends `V2XMessageProcessor` is stateful
@@ -207,6 +210,7 @@ The next Phase 3 structural cut should preserve the current behavior and 67-test
 ### Current Boundary
 - `COERDecoder` owns envelope parsing, signed-container extraction, and structure validation
 - `V2XFrameDecoder` owns frame-type detection and payload-to-frame decoding
+- `V2XFrameDecoder` owns frame-layer exceptions
 - `V2XMessageProcessor` owns orchestration, verification, and verified decoded output
 - JNI now marshals processor results instead of reparsing the message
 - JNI now uses the static processor API consistently

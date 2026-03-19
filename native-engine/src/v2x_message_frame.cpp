@@ -16,7 +16,6 @@
  */
 
 #include "v2x_frame_decoder.h"
-#include "v2x_coer_decoder.h"
 #include "v2x_structures.hpp"
 #include <cstring>
 #include <sstream>
@@ -48,11 +47,11 @@ MessageFrameType V2XFrameDecoder::detect_frame_type(const std::vector<uint8_t>& 
      */
     
     if (payload.empty()) {
-        throw COERBufferException("Empty payload: cannot determine frame type");
+        throw V2XFrameBufferException("Empty payload: cannot determine frame type");
     }
     
     if (payload.size() < 3) {
-        throw COERBufferException(
+        throw V2XFrameBufferException(
             "Payload too short (" + std::to_string(payload.size()) + 
             " bytes, need at least 3 for frame type detection)"
         );
@@ -85,7 +84,7 @@ MessageFrameType V2XFrameDecoder::detect_frame_type(const std::vector<uint8_t>& 
  */
 static double extract_coordinate(const std::vector<uint8_t>& data, size_t& pos) {
     if (pos + 4 > data.size()) {
-        throw COERBufferException("Cannot read coordinate: truncated buffer");
+        throw V2XFrameBufferException("Cannot read coordinate: truncated buffer");
     }
     
     int32_t value = 0;
@@ -183,7 +182,7 @@ static BasicSafetyMessage decode_bsm(const std::vector<uint8_t>& payload) {
         }
         
     } catch (const std::exception& e) {
-        throw COERFormatException("BSM decoding failed: " + std::string(e.what()));
+        throw V2XFrameDecodeException("BSM decoding failed: " + std::string(e.what()));
     }
     
     return bsm;
@@ -252,7 +251,7 @@ static SignalPhaseAndTiming decode_spat(const std::vector<uint8_t>& payload) {
         }
         
     } catch (const std::exception& e) {
-        throw COERFormatException("SPaT decoding failed: " + std::string(e.what()));
+        throw V2XFrameDecodeException("SPaT decoding failed: " + std::string(e.what()));
     }
     
     return spat;
@@ -308,7 +307,7 @@ static PersonalSafetyMessage decode_psm(const std::vector<uint8_t>& payload) {
         }
         
     } catch (const std::exception& e) {
-        throw COERFormatException("PSM decoding failed: " + std::string(e.what()));
+        throw V2XFrameDecodeException("PSM decoding failed: " + std::string(e.what()));
     }
     
     return psm;
@@ -344,10 +343,10 @@ DecodedV2XMessage V2XFrameDecoder::decode(
             }
             default: {
                 msg.frame_type = MessageFrameType::UNKNOWN;
-                throw COERFormatException("Unsupported frame type");
+                throw V2XFrameDecodeException("Unsupported frame type");
             }
         }
-    } catch (const COERFormatException& e) {
+    } catch (const V2XFrameDecodeException& e) {
         msg.frame_type = MessageFrameType::UNKNOWN;
         throw;
     }

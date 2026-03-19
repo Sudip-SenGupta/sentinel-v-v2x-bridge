@@ -43,6 +43,7 @@ JNI entry points translate Kotlin and Java data into native types and route requ
 The native engine contains:
 - COER decoding
 - `V2XFrameDecoder` frame detection and decode logic
+- frame-layer exception handling owned by `V2XFrameDecoder` rather than the COER decoder
 - message processing
 - Botan-backed crypto and certificate validation
 
@@ -71,6 +72,7 @@ The current parser-compatible message path is:
 - `v2x_jni_message_processor.cpp`
 - `COERDecoder::parse()` in `native-engine/src/v2x_coer_decoder.cpp`
 - `V2XFrameDecoder` frame detection and decode logic in `native-engine/src/v2x_message_frame.cpp`
+- frame-layer exception types defined in `native-engine/include/v2x_frame_decoder.h`
 - message processing and validation in `native-engine/src/v2x_message_processor.cpp`
 
 This path expects a binary contract of:

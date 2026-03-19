@@ -90,7 +90,7 @@ TEST(Phase3DecoderBoundaryTest, FrameDetectionFailureRemainsAFrameLayerConcern) 
     const COERMessage parsed = COERDecoder::parse(raw_message);
 
     EXPECT_TRUE(COERDecoder::validate_structure(parsed));
-    EXPECT_THROW(V2XFrameDecoder::detect_frame_type(parsed.payload), COERBufferException);
+    EXPECT_THROW(V2XFrameDecoder::detect_frame_type(parsed.payload), V2XFrameBufferException);
 }
 
 TEST(Phase3DecoderBoundaryTest, ProcessorReturnsDecodedOutputForUnsignedBSM) {
