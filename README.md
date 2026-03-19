@@ -2,6 +2,11 @@
 
 V2X security bridge for Android platforms, with a Kotlin/Android layer, an Android JNI library module, and a native C++ engine.
 
+This repository is highly useful for its specific purpose: to serve as a V2X Security Bridge for Android.
+
+Primary Function: Its core function is to provide a secure and reliable way for an Android application to process Vehicle-to-Everything (V2X) messages. It handles the critical and complex tasks of parsing binary message formats (COER), verifying cryptographic signatures, and validating certificate chains.
+Target Application: It is intended for any Android-based system that needs to consume V2X data, such as an in-vehicle infotainment (IVI) system or a roadside unit interface. By abstracting the security and parsing complexity into a dedicated library, it allows application developers to focus on using the V2X data rather than securing it.
+
 ## Current State
 
 The repository currently has three important parts:
