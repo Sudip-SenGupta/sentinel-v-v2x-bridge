@@ -477,8 +477,7 @@ JNIEXPORT jobject JNICALL Java_com_sentinel_v2x_V2X_processMessage(
         LOGI("Processing COER message (%zu bytes)", coer_data.size());
 
         // Enforce the native verification pipeline before JNI marshalling.
-        V2XMessageProcessor processor;
-        const auto verification = processor.process_message(coer_data);
+        const auto verification = V2XMessageProcessor::process_message(coer_data);
         if (!verification.is_valid) {
             const std::string error = verification.error_message.empty()
                 ? "Message verification failed"
@@ -595,8 +594,7 @@ JNIEXPORT jobject JNICALL Java_com_sentinel_v2x_V2X_processBatch(
 
                 LOGI("Processing message %d (%zu bytes)", i, coer_data.size());
 
-                V2XMessageProcessor processor;
-                const auto verification = processor.process_message(coer_data);
+                const auto verification = V2XMessageProcessor::process_message(coer_data);
                 if (!verification.is_valid) {
                     const std::string error = verification.error_message.empty()
                         ? "Message verification failed"

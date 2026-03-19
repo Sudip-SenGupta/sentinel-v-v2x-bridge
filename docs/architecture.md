@@ -46,6 +46,8 @@ The native engine contains:
 - message processing
 - Botan-backed crypto and certificate validation
 
+`COERDecoder`, `V2XFrameDecoder`, and `V2XMessageProcessor` are currently treated as stateless utility classes. They expose static entry points and do not own runtime session state between calls.
+
 ## Android To JNI To Native Flow
 
 The dominant end-to-end flow is:
@@ -76,6 +78,8 @@ This path expects a binary contract of:
 - varint payload length
 - payload bytes
 - optional signed-message trailer with algorithm, signature, signer certificate, and parent chain
+
+Within this flow, `COERDecoder`, `V2XFrameDecoder`, and `V2XMessageProcessor` are used as stateless utility boundaries rather than instantiated service objects.
 
 ## Crypto And Trust Flow
 

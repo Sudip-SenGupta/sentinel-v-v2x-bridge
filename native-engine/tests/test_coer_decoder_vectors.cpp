@@ -530,31 +530,6 @@ TEST_F(COERDecoderTest, TruncatedSignedMessageChainEntryThrows) {
 // ============================================================================
 
 /**
- * @test Message type to string conversion
- */
-TEST_F(COERDecoderTest, MessageTypeToString) {
-    std::string unsigned_str = COERDecoder::message_type_to_string(0x03);
-    EXPECT_FALSE(unsigned_str.empty());
-    
-    std::string signed_str = COERDecoder::message_type_to_string(0x02);
-    EXPECT_FALSE(signed_str.empty());
-    
-    std::cout << "\n[UTIL] Unsigned: \"" << unsigned_str << "\"\n";
-    std::cout << "[UTIL] Signed: \"" << signed_str << "\"\n";
-}
-
-/**
- * @test Signature algorithm to string conversion
- */
-TEST_F(COERDecoderTest, SignatureAlgorithmToString) {
-    std::string algo_str = COERDecoder::signature_algorithm_to_string(0x04);
-    EXPECT_FALSE(algo_str.empty());
-    EXPECT_NE(algo_str.find("256"), std::string::npos);  // Should mention P-256
-    
-    std::cout << "[UTIL] ECDSA Algorithm: \"" << algo_str << "\"\n";
-}
-
-/**
  * @test Version string retrieval
  */
 TEST_F(COERDecoderTest, GetVersion) {

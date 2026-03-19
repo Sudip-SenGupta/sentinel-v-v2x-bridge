@@ -64,6 +64,8 @@ struct MessageVerificationResult {
  */
 class V2XMessageProcessor {
 public:
+    V2XMessageProcessor() = delete;
+
     /**
      * Process and verify a V2X message
      *

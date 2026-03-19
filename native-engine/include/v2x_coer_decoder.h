@@ -311,6 +311,8 @@ struct COERMessage {
  */
 class COERDecoder {
 public:
+    COERDecoder() = delete;
+
     
     // ========================================================================
     // Core Parsing Methods
@@ -576,51 +578,23 @@ public:
     // ========================================================================
     // Utility and Information Methods
     // ========================================================================
-    
-    /**
-     * Get descriptive string for message type
-     * 
-     * @param message_type Raw message type byte
-     * @return Human-readable description (e.g., "Signed", "Encrypted+Signed")
-     */
-    static std::string message_type_to_string(uint8_t message_type);
-    
-    /**
-     * Get descriptive string for signature algorithm
-     * 
-     * @param algorithm Signature algorithm byte
-     * @return Human-readable description (e.g., "ECDSA P-256")
-     */
-    static std::string signature_algorithm_to_string(uint8_t algorithm);
-    
+
     /**
      * Get version string for compatibility checking
      * 
      * @return COER decoder implementation version (e.g., "1.0.0")
      */
     static std::string get_version();
-    
+
     // ========================================================================
     // Logging and Debug
     // ========================================================================
-    
-    /**
-     * Enable or disable debug logging
-     * 
-     * When enabled, logs detailed parsing steps for troubleshooting.
-     * Has minimal performance impact when disabled.
-     * 
-     * @param enabled true to enable debug logs
-     */
+
     static void set_debug_logging(bool enabled);
-    
-    /**
-     * Log parsed message structure for debugging
-     * 
-     * Outputs: message type, version, payload size, signature presence, etc.
-     * 
-     * @param message Parsed COERMessage to log
-     */
+
+private:
+    static std::string message_type_to_string(uint8_t message_type);
+    static std::string signature_algorithm_to_string(uint8_t algorithm);
     static void log_message_structure(const COERMessage& message);
 };
 
