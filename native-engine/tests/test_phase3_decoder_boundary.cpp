@@ -79,8 +79,9 @@ TEST(Phase3DecoderBoundaryTest, EnvelopeParsingCanSucceedForUnknownFrameType) {
     const COERMessage parsed = COERDecoder::parse(raw_message);
 
     EXPECT_TRUE(COERDecoder::validate_structure(parsed));
-    EXPECT_EQ(parsed.payload, payload);
-    EXPECT_EQ(V2XFrameDecoder::detect_frame_type(parsed.payload), MessageFrameType::UNKNOWN);
+    const auto& parsed_payload = COERDecoder::get_payload(parsed);
+    EXPECT_EQ(parsed_payload, payload);
+    EXPECT_EQ(V2XFrameDecoder::detect_frame_type(parsed_payload), MessageFrameType::UNKNOWN);
 }
 
 TEST(Phase3DecoderBoundaryTest, FrameDetectionFailureRemainsAFrameLayerConcern) {
@@ -90,7 +91,8 @@ TEST(Phase3DecoderBoundaryTest, FrameDetectionFailureRemainsAFrameLayerConcern) 
     const COERMessage parsed = COERDecoder::parse(raw_message);
 
     EXPECT_TRUE(COERDecoder::validate_structure(parsed));
-    EXPECT_THROW(V2XFrameDecoder::detect_frame_type(parsed.payload), V2XFrameBufferException);
+    const auto& parsed_payload = COERDecoder::get_payload(parsed);
+    EXPECT_THROW(V2XFrameDecoder::detect_frame_type(parsed_payload), V2XFrameBufferException);
 }
 
 TEST(Phase3DecoderBoundaryTest, ProcessorReturnsDecodedOutputForUnsignedBSM) {
