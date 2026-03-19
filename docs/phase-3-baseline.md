@@ -103,7 +103,7 @@ The current Phase 3 branch has already completed several structural cleanup slic
 - the non-Android logging fallback in `v2x_crypto_engine.cpp` now supports the existing printf-style logging call sites
 - the native off-target test target passes
 - the Android Phase 1 regression gate still passes at `67` instrumentation tests
-- `test_coer_decoder_vectors.cpp` Test Suites 1-2 now route payload access through `COERDecoder::get_payload(...)` and chain access through `COERDecoder::extract_certificate_chain(...)` rather than direct field access; this establishes a disciplined test-surface boundary
+- `test_coer_decoder_vectors.cpp` Test Suites 1-3 now route payload access through `COERDecoder::get_payload(...)`, and the earlier parser/component cases use decoder-owned chain extraction rather than direct field access; later performance and payload-size reference checks now follow the same accessor boundary
 
 ## Current Validation Behavior
 

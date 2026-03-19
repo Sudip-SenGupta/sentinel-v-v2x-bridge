@@ -722,7 +722,7 @@ TEST_F(COERDecoderTest, ParserPerformance) {
     // Extract timing would go here with std::chrono
     // For now, just verify message was parsed
     EXPECT_TRUE(msg.is_signed());
-    EXPECT_GT(msg.payload.size(), 0);
+    EXPECT_GT(COERDecoder::get_payload(msg).size(), 0);
     
     std::cout << "\n[PERFORMANCE] Maximum size message parsed successfully\n"
               << "  Size: " << msg.total_size() << " bytes\n"
@@ -778,24 +778,24 @@ TEST_F(COERDecoderTest, ExceptionMessagesAreInformative) {
 TEST_F(COERDecoderTest, TestVectorLengthEncodingCompliance) {
     // UNSIGNED_MINIMAL: 0x0F = 15 bytes (single-byte varint, valid < 128)
     COERMessage msg1 = parse_hex_message(UNSIGNED_MINIMAL_HEX);
-    EXPECT_EQ(msg1.payload.size(), UNSIGNED_MINIMAL_EXPECTED_PAYLOAD_SIZE);
-    EXPECT_EQ(msg1.payload.size(), 15);
+    EXPECT_EQ(COERDecoder::get_payload(msg1).size(), UNSIGNED_MINIMAL_EXPECTED_PAYLOAD_SIZE);
+    EXPECT_EQ(COERDecoder::get_payload(msg1).size(), 15);
     
     // SIGNED_TYPICAL_BSM: 0x20 = 32 bytes (single-byte varint, valid < 128)
     COERMessage msg2 = parse_hex_message(SIGNED_TYPICAL_BSM_HEX);
-    EXPECT_EQ(msg2.payload.size(), SIGNED_TYPICAL_BSM_EXPECTED_PAYLOAD_SIZE);
-    EXPECT_EQ(msg2.payload.size(), 32);
+    EXPECT_EQ(COERDecoder::get_payload(msg2).size(), SIGNED_TYPICAL_BSM_EXPECTED_PAYLOAD_SIZE);
+    EXPECT_EQ(COERDecoder::get_payload(msg2).size(), 32);
     
     // SIGNED_MAXIMUM_SIZE: 0x820110 = variable-length encoding of 272 bytes
     // (0x82 = "2 bytes follow", 0x0110 = 272 in big-endian)
     COERMessage msg3 = parse_hex_message(SIGNED_MAXIMUM_SIZE_HEX);
-    EXPECT_EQ(msg3.payload.size(), SIGNED_MAXIMUM_SIZE_EXPECTED_PAYLOAD_SIZE);
-    EXPECT_EQ(msg3.payload.size(), 272);  // Multi-byte varint
+    EXPECT_EQ(COERDecoder::get_payload(msg3).size(), SIGNED_MAXIMUM_SIZE_EXPECTED_PAYLOAD_SIZE);
+    EXPECT_EQ(COERDecoder::get_payload(msg3).size(), 272);  // Multi-byte varint
     
     std::cout << "\n[VARINT COMPLIANCE]"
-              << "\n  Minimal (0x0F = 15): " << msg1.payload.size()
-              << "\n  Typical (0x20 = 32): " << msg2.payload.size()
-              << "\n  Maximum (0x820110 = 272): " << msg3.payload.size()
+              << "\n  Minimal (0x0F = 15): " << COERDecoder::get_payload(msg1).size()
+              << "\n  Typical (0x20 = 32): " << COERDecoder::get_payload(msg2).size()
+              << "\n  Maximum (0x820110 = 272): " << COERDecoder::get_payload(msg3).size()
               << "\n  All COER varint encodings validated ✓\n";
 }
 
@@ -812,7 +812,7 @@ TEST_F(COERDecoderTest, PayloadSizeMatchesLengthField) {
     
     // The hex string encodes: header (0x32) + length (0x20) + 32 bytes + signature + cert
     // Parser should parse exactly 32 bytes as payload
-    EXPECT_EQ(msg.payload.size(), 32);
+    EXPECT_EQ(COERDecoder::get_payload(msg).size(), 32);
     
     // If we hypothetically changed length field to 0x00, parser would read 0 bytes
     // and test would fail (0 != 32) - this validates test structure
@@ -820,8 +820,8 @@ TEST_F(COERDecoderTest, PayloadSizeMatchesLengthField) {
     
     std::cout << "\n[PAYLOAD SIZE VERIFICATION]"
               << "\n  Length Field Encoding: 0x20"
-              << "\n  Parsed Payload Size: " << msg.payload.size() << " bytes"
-              << "\n  Match: " << (msg.payload.size() == 32 ? "✓ YES" : "✗ NO") << "\n";
+              << "\n  Parsed Payload Size: " << COERDecoder::get_payload(msg).size() << " bytes"
+              << "\n  Match: " << (COERDecoder::get_payload(msg).size() == 32 ? "✓ YES" : "✗ NO") << "\n";
 }
 
 /**
