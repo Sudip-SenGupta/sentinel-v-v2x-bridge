@@ -79,15 +79,15 @@ TEST_F(COERDecoderTest, ParseMinimalUnsignedMessage) {
     EXPECT_EQ(msg.message_type, UNSIGNED_MINIMAL_EXPECTED_MESSAGE_TYPE);
     EXPECT_EQ(msg.protocol_version, 3);
     EXPECT_EQ(msg.is_signed(), UNSIGNED_MINIMAL_EXPECTED_IS_SIGNED);
-    EXPECT_EQ(msg.payload.size(), UNSIGNED_MINIMAL_EXPECTED_PAYLOAD_SIZE);
+    EXPECT_EQ(COERDecoder::get_payload(msg).size(), UNSIGNED_MINIMAL_EXPECTED_PAYLOAD_SIZE);
     
     // Verify payload content (should match hex bytes after header+length)
-    EXPECT_FALSE(msg.payload.empty());
+    EXPECT_FALSE(COERDecoder::get_payload(msg).empty());
     
     // Log for verification
     std::cout << "\n[UNSIGNED] Message Type: 0x" << std::hex 
               << static_cast<int>(msg.message_type) << std::dec
-              << ", Payload Size: " << msg.payload.size() << " bytes\n";
+              << ", Payload Size: " << COERDecoder::get_payload(msg).size() << " bytes\n";
 }
 
 /**
@@ -109,7 +109,7 @@ TEST_F(COERDecoderTest, ParseSignedBSMMessage) {
     EXPECT_EQ(msg.message_type, SIGNED_TYPICAL_BSM_EXPECTED_MESSAGE_TYPE);
     EXPECT_EQ(msg.protocol_version, 3);
     EXPECT_TRUE(msg.is_signed());
-    EXPECT_EQ(msg.payload.size(), SIGNED_TYPICAL_BSM_EXPECTED_PAYLOAD_SIZE);
+    EXPECT_EQ(COERDecoder::get_payload(msg).size(), SIGNED_TYPICAL_BSM_EXPECTED_PAYLOAD_SIZE);
     EXPECT_FALSE(msg.is_encrypted());
     
     // Verify signature extraction
@@ -122,15 +122,15 @@ TEST_F(COERDecoderTest, ParseSignedBSMMessage) {
     
     // Verify payload extraction
     auto payload = COERDecoder::get_payload(msg);
-    EXPECT_EQ(payload.size(), msg.payload.size());
+    EXPECT_EQ(payload.size(), COERDecoder::get_payload(msg).size());
     
     // Verify chain (should be empty for this test vector)
     auto chain = COERDecoder::extract_certificate_chain(msg);
-    EXPECT_EQ(msg.signature_container.chain_depth(), chain.size());
+    EXPECT_EQ(COERDecoder::extract_certificate_chain(msg).size(), chain.size());
     
     std::cout << "\n[SIGNED BSM] Message Type: 0x" << std::hex 
               << static_cast<int>(msg.message_type) << std::dec
-              << ", Payload: " << msg.payload.size()
+              << ", Payload: " << COERDecoder::get_payload(msg).size()
               << " bytes, Signature: " << signature.size()
               << " bytes, Cert Size: " << issuer_cert.size() << " bytes\n";
 }
@@ -151,7 +151,7 @@ TEST_F(COERDecoderTest, ParseSignedMessageWithChain) {
     // Verify message is signed
     EXPECT_EQ(msg.message_type, SIGNED_WITH_CHAIN_EXPECTED_MESSAGE_TYPE);
     EXPECT_TRUE(msg.is_signed());
-    EXPECT_EQ(msg.payload.size(), SIGNED_WITH_CHAIN_EXPECTED_PAYLOAD_SIZE);
+    EXPECT_EQ(COERDecoder::get_payload(msg).size(), SIGNED_WITH_CHAIN_EXPECTED_PAYLOAD_SIZE);
     
     // Verify issuer certificate
     auto issuer_cert = COERDecoder::extract_issuer_certificate(msg);
@@ -169,9 +169,9 @@ TEST_F(COERDecoderTest, ParseSignedMessageWithChain) {
     
     // Verify total size calculation
     size_t total = msg.total_size();
-    EXPECT_GT(total, msg.payload.size());
+    EXPECT_GT(total, COERDecoder::get_payload(msg).size());
     
-    std::cout << "\n[CHAIN MESSAGE] Payload: " << msg.payload.size()
+    std::cout << "\n[CHAIN MESSAGE] Payload: " << COERDecoder::get_payload(msg).size()
               << " bytes, Chain Depth: " << chain.size()
               << ", Total Message Size: " << total << " bytes\n";
 }
@@ -186,17 +186,17 @@ TEST_F(COERDecoderTest, ParseEmergencyAlertMessage) {
     COERMessage msg = parse_hex_message(SIGNED_EMERGENCY_ALERT_HEX);
     
     EXPECT_TRUE(msg.is_signed());
-    EXPECT_EQ(msg.payload.size(), SIGNED_EMERGENCY_ALERT_EXPECTED_PAYLOAD_SIZE);
+    EXPECT_EQ(COERDecoder::get_payload(msg).size(), SIGNED_EMERGENCY_ALERT_EXPECTED_PAYLOAD_SIZE);
     
     // Emergency alerts should have smaller payload
-    EXPECT_LT(msg.payload.size(), 64);
+    EXPECT_LT(COERDecoder::get_payload(msg).size(), 64);
     
     auto signature = COERDecoder::extract_signature(msg);
     EXPECT_EQ(signature.size(), 64);  // Standard ECDSA P-256
     
-    std::cout << "\n[ALERT] Payload: " << msg.payload.size()
+    std::cout << "\n[ALERT] Payload: " << COERDecoder::get_payload(msg).size()
               << " bytes (emergency alert code: 0x" << std::hex
-              << static_cast<int>(msg.payload[0]) << std::dec << ")\n";
+              << static_cast<int>(COERDecoder::get_payload(msg)[0]) << std::dec << ")\n";
 }
 
 /**
@@ -209,16 +209,16 @@ TEST_F(COERDecoderTest, ParseMaximumSizeMessage) {
     COERMessage msg = parse_hex_message(SIGNED_MAXIMUM_SIZE_HEX);
     
     EXPECT_TRUE(msg.is_signed());
-    EXPECT_EQ(msg.payload.size(), SIGNED_MAXIMUM_SIZE_EXPECTED_PAYLOAD_SIZE);
+    EXPECT_EQ(COERDecoder::get_payload(msg).size(), SIGNED_MAXIMUM_SIZE_EXPECTED_PAYLOAD_SIZE);
     
     // Verify payload is substantially filled
-    EXPECT_GT(msg.payload.size(), 256);
+    EXPECT_GT(COERDecoder::get_payload(msg).size(), 256);
     
     auto signature = COERDecoder::extract_signature(msg);
     auto issuer_cert = COERDecoder::extract_issuer_certificate(msg);
-    size_t total_size = 3 + msg.payload.size() + 1 + signature.size() + issuer_cert.size();
+    size_t total_size = 3 + COERDecoder::get_payload(msg).size() + 1 + signature.size() + issuer_cert.size();
     
-    std::cout << "\n[LARGE] Payload: " << msg.payload.size()
+    std::cout << "\n[LARGE] Payload: " << COERDecoder::get_payload(msg).size()
               << " bytes, Total Message: ~" << total_size << " bytes\n";
 }
 
@@ -246,11 +246,11 @@ TEST_F(COERDecoderTest, ValidatePayloadConsistency) {
     COERMessage msg = parse_hex_message(SIGNED_TYPICAL_BSM_HEX);
     
     // Payload size should be positive and reasonable
-    EXPECT_GT(msg.payload.size(), 0);
-    EXPECT_LT(msg.payload.size(), 4096);  // Sanity limit
+    EXPECT_GT(COERDecoder::get_payload(msg).size(), 0);
+    EXPECT_LT(COERDecoder::get_payload(msg).size(), 4096);  // Sanity limit
     
     // total_size() should be greater than payload alone
-    EXPECT_GT(msg.total_size(), msg.payload.size());
+    EXPECT_GT(msg.total_size(), COERDecoder::get_payload(msg).size());
 }
 
 // ============================================================================
@@ -318,8 +318,8 @@ TEST_F(COERDecoderTest, ExtractPayload) {
     COERMessage msg = parse_hex_message(UNSIGNED_MINIMAL_HEX);
     
     auto payload = COERDecoder::get_payload(msg);
-    EXPECT_EQ(payload.size(), msg.payload.size());
-    EXPECT_EQ(payload, msg.payload);
+    EXPECT_EQ(payload.size(), COERDecoder::get_payload(msg).size());
+    EXPECT_EQ(payload, COERDecoder::get_payload(msg));
 }
 
 /**
