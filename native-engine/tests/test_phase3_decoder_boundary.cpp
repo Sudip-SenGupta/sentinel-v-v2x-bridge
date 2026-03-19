@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <vector>
+#include <string>
 
 #include "v2x_coer_decoder.h"
 #include "v2x_frame_decoder.h"
@@ -111,4 +112,59 @@ TEST(Phase3DecoderBoundaryTest, ProcessorReturnsDecodedOutputForUnsignedBSM) {
     EXPECT_TRUE(result.decoded_message->is_verified);
     EXPECT_EQ(result.decoded_message->issuer_name, "unsigned");
     EXPECT_EQ(result.decoded_message->get_bsm().sequence_num, 0x42);
+}
+
+TEST(Phase3DecoderBoundaryTest, ProcessorFailsClosedWhenFrameDecodeThrows) {
+    /**
+     * @test Frame Decode Failure -> Processor Fail-Closed
+     *
+     * Verifies the boundary between decoder and frame layers:
+     * 1. Envelope parses successfully
+     * 2. Structure validation passes
+     * 3. Frame decoder detects UNKNOWN frame type
+     * 4. Frame decode throws V2XFrameDecodeException
+     * 5. Processor catches exception and returns fail-closed with:
+     *    - is_valid = false
+     *    - coer_parse_ok = true
+     *    - payload_structure_ok = true
+     *    - error message contains "Frame decode failed"
+     *
+     * This ensures that frame layer failures don't leak as codec errors
+     * or leave partial/invalid state.
+     */
+    const std::vector<uint8_t> payload = {0xF0, 0x01, 0x02};
+    const auto raw_message = wrapInCOERContainer(payload);
+
+    // Step 1: Verify envelope parses
+    const COERMessage parsed = COERDecoder::parse(raw_message);
+    EXPECT_TRUE(COERDecoder::validate_structure(parsed));
+    const auto& parsed_payload = COERDecoder::get_payload(parsed);
+    EXPECT_EQ(parsed_payload, payload);
+
+    // Step 2: Verify frame detection returns UNKNOWN
+    EXPECT_EQ(V2XFrameDecoder::detect_frame_type(parsed_payload), MessageFrameType::UNKNOWN);
+
+    // Step 3: Verify frame decode throws V2XFrameDecodeException
+    EXPECT_THROW(
+        V2XFrameDecoder::decode(parsed_payload, MessageFrameType::UNKNOWN),
+        V2XFrameDecodeException
+    );
+
+    // Step 4: Verify processor returns fail-closed
+    const MessageVerificationResult result = V2XMessageProcessor::process_message(raw_message);
+
+    EXPECT_FALSE(result.is_valid);
+    EXPECT_TRUE(result.coer_parse_ok);
+    EXPECT_TRUE(result.payload_structure_ok);
+    EXPECT_TRUE(result.error_message.find("Frame decode failed") != std::string::npos)
+        << "Error message should contain 'Frame decode failed', got: " << result.error_message;
+    EXPECT_FALSE(result.decoded_message.has_value());
+
+    std::cout << "\n[BOUNDARY TEST: Frame Decode Failure]\n"
+              << "  COER Parse: OK\n"
+              << "  Structure Validation: OK\n"
+              << "  Frame Detection: UNKNOWN\n"
+              << "  Frame Decode: THREW (expected)\n"
+              << "  Processor Result: FAIL-CLOSED\n"
+              << "  Error: " << result.error_message << "\n";
 }

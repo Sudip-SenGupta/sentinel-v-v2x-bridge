@@ -94,7 +94,7 @@ The current Phase 3 branch has already completed several structural cleanup slic
 - JNI `processBatch(...)` no longer reparses and redecodes verified COER bytes
 - `V2XFrameDecoder` now owns frame type detection and frame decoding
 - `V2XFrameDecoder` now owns frame-layer exception types and no longer depends on decoder exceptions
-- native off-target boundary tests now cover parser-valid unknown frame types, frame-layer detection failures, and decoded output from `V2XMessageProcessor`
+- native off-target boundary tests now cover parser-valid unknown frame types, frame-layer detection failures, decoded output from `V2XMessageProcessor`, and fail-closed processor behavior when frame decoding throws on an otherwise valid envelope
 - decoder-only coverage now locks down `extract_signed_components(...)` and signed-container truncation failures in `test_coer_decoder_vectors.cpp`
 - `COERDecoder`, `V2XFrameDecoder`, and `V2XMessageProcessor` are now explicitly non-instantiable utility classes
 - JNI now calls `V2XMessageProcessor::process_message(...)` consistently through the static API instead of constructing throwaway processor instances
@@ -225,3 +225,4 @@ The next Phase 3 structural cut should preserve the current behavior and 67-test
 - no semantic validation expansion in this slice
 - no crypto-policy changes
 - no library-evaluation work until the current custom decoder boundary is fully stabilized
+
