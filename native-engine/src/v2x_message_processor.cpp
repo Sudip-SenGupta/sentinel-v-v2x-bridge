@@ -105,7 +105,7 @@ MessageVerificationResult V2XMessageProcessor::process_message(
                 }
 
                 // STAGE 4: Validate certificate chain
-                bool chain_valid = false;
+                V2XMessageProcessor::ChainValidationResult chain_result{false, ""};
                 try {
                     // Build full chain: issuer cert + additional chain certs
                     std::vector<std::vector<uint8_t>> full_chain;
@@ -113,10 +113,10 @@ MessageVerificationResult V2XMessageProcessor::process_message(
                     full_chain.insert(full_chain.end(), result.chain.begin(), result.chain.end());
 
                     if (g_chain_validator_hook) {
-                        chain_valid = g_chain_validator_hook(full_chain, 0);
+                        chain_result = g_chain_validator_hook(full_chain, 0);
                     } else {
                         V2XCryptoEngine crypto_engine;
-                        chain_valid = crypto_engine.validate_certificate_chain(
+                        chain_result.valid = crypto_engine.validate_certificate_chain(
                             full_chain,
                             0  // Use current time
                         );
@@ -127,9 +127,11 @@ MessageVerificationResult V2XMessageProcessor::process_message(
                     return result;
                 }
 
-                result.chain_valid = chain_valid;
-                if (!chain_valid) {
-                    result.error_message = "Certificate chain validation failed";
+                result.chain_valid = chain_result.valid;
+                if (!chain_result.valid) {
+                    result.error_message = chain_result.error_message.empty()
+                        ? "Certificate chain validation failed"
+                        : chain_result.error_message;
                     return result;
                 }
 

@@ -66,13 +66,18 @@ struct MessageVerificationResult {
  */
 class V2XMessageProcessor {
 public:
+    struct ChainValidationResult {
+        bool valid;
+        std::string error_message;
+    };
+
     using SignatureVerifierHook = std::function<SignatureVerificationResult(
         const std::vector<uint8_t>&,
         const std::vector<uint8_t>&,
         const std::vector<uint8_t>&
     )>;
 
-    using ChainValidatorHook = std::function<bool(
+    using ChainValidatorHook = std::function<ChainValidationResult(
         const std::vector<std::vector<uint8_t>>&,
         uint64_t
     )>;

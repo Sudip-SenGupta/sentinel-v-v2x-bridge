@@ -36,12 +36,12 @@ The current branch already supports:
 - certificate-chain validation through `V2XCryptoEngine::validate_certificate_chain(...)`
 - end-to-end signed-message rejection in Android instrumentation for several negative trust/time cases
 
-The current branch does not yet clearly guarantee, in focused native boundary tests:
+The current branch now clearly guarantees, in focused native boundary tests:
 - deterministic invalid-signature processor fail-closed behavior
 - deterministic chain-validation processor fail-closed behavior
 - deterministic trust-anchor failure behavior at the processor boundary
 
-That is the main gap Phase 4 should close.
+The main remaining optional gap is JNI/integration-specific trust-anchor coverage, not the native processor boundary itself.
 
 ## Phase 4 Scope
 
@@ -110,21 +110,35 @@ Findings:
 
 Conclusion:
 - the first Phase 4 slice uses a minimal processor-side crypto seam for native off-target coverage rather than porting the Android fixture generator into C++
-- this seam is test-only and is used to force deterministic signature-verification failure after parsing succeeds
+- this seam is test-only and started by forcing deterministic signature-verification failure after parsing succeeds
+- the seam now carries chain-validation error text as well, so trust-anchor-specific failures can be distinguished from generic chain rejection
 
-## Current Completed Slice
+## Current Completed Slices
 
-The first Phase 4 slice has already completed:
+The first completed Phase 4 slice established:
 - a minimal test-only crypto seam in `V2XMessageProcessor`
 - a dedicated native off-target suite: `test_phase4_crypto_boundary.cpp`
-- first Target 1 coverage: invalid signature fails closed before chain validation
+- Target 1 coverage: invalid signature fails closed before chain validation
 
-What that first test now proves:
+What that first slice proves:
 - the signed message is parsed successfully
 - structure validation succeeds
 - signature verification can fail deterministically at the processor boundary
 - chain validation is not reached after signature failure
 - `V2XMessageProcessor` returns fail-closed output with a signature-stage error
+
+The second completed Phase 4 slice extends that seam and coverage with:
+- Target 2 coverage: chain validation fails closed after valid signature verification
+- Target 3 coverage for two trust-anchor-specific fail-closed cases:
+  - wrong configured trust anchor
+  - missing trust-anchor state
+- richer chain-hook error propagation so trust-anchor-specific test failures do not collapse into generic chain-validation failure text
+
+What the second slice proves:
+- chain-stage rejection happens after a successful signature stage
+- trust-anchor-specific failures are distinguishable from generic chain rejection
+- V2XMessageProcessor preserves fail-closed output with trust-stage error text
+- native off-target and Android regression gates still pass
 
 ## Regression Gate
 
@@ -147,10 +161,9 @@ All Phase 4 refactoring must preserve:
 ## Recommended Next Step
 
 The next implementation step is:
-- extend `test_phase4_crypto_boundary.cpp` with Target 2: chain validation failure -> processor fail-closed
-
-That should reuse the same seam pattern and keep the slice narrow.
+- commit the seam refinement and trust-anchor boundary tests as one coherent Phase 4 slice
+- decide whether JNI/integration-specific trust-anchor coverage is worth a final follow-up
 
 After that:
-- add Target 3 trust-anchor failure coverage in separate native tests
-- only then decide whether Android-specific crypto-boundary additions are necessary
+- either close Phase 4 as complete for the native processor boundary
+- or take one narrow JNI/trust-anchor integration slice if a real gap remains

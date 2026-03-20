@@ -25,6 +25,7 @@ add_executable(crypto_engine_test
     test_message_processor_integration.cpp
     test_v2x_message_frame_integration.cpp
     test_phase3_decoder_boundary.cpp
+    test_phase4_crypto_boundary.cpp
     ../src/v2x_crypto_engine.cpp
     ../src/v2x_coer_decoder.cpp
     ../src/v2x_payload_validator.cpp

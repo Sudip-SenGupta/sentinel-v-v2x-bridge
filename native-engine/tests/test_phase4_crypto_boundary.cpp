@@ -54,7 +54,7 @@ TEST(Phase4CryptoBoundaryTest, InvalidSignatureFailsClosedBeforeChainValidation)
         },
         [&](const std::vector<std::vector<uint8_t>>&, uint64_t) {
             chain_hook_called = true;
-            return true;
+            return V2XMessageProcessor::ChainValidationResult{true, ""};
         }
     );
 
@@ -71,5 +71,135 @@ TEST(Phase4CryptoBoundaryTest, InvalidSignatureFailsClosedBeforeChainValidation)
     EXPECT_FALSE(result.signature.empty());
     EXPECT_FALSE(result.error_message.empty());
     EXPECT_NE(result.error_message.find("Signature verification failed"), std::string::npos);
+    EXPECT_FALSE(result.decoded_message.has_value());
+}
+
+TEST(Phase4CryptoBoundaryTest, ChainValidationFailureFailsClosedAfterValidSignature) {
+    const std::vector<uint8_t> raw_message = hex_to_bytes_local(SIGNED_TYPICAL_BSM_HEX);
+
+    bool signature_hook_called = false;
+    bool chain_hook_called = false;
+
+    CryptoHookGuard hook_guard(
+        [&](const std::vector<uint8_t>& payload,
+            const std::vector<uint8_t>& signature,
+            const std::vector<uint8_t>& issuer_cert) {
+            signature_hook_called = true;
+            EXPECT_FALSE(payload.empty());
+            EXPECT_FALSE(signature.empty());
+            EXPECT_FALSE(issuer_cert.empty());
+            return SignatureVerificationResult{true, "", "test-hook", 0};
+        },
+        [&](const std::vector<std::vector<uint8_t>>& chain, uint64_t validation_time) {
+            chain_hook_called = true;
+            EXPECT_FALSE(chain.empty());
+            EXPECT_EQ(validation_time, 0u);
+            return V2XMessageProcessor::ChainValidationResult{
+                false,
+                "Certificate chain validation failed"
+            };
+        }
+    );
+
+    const MessageVerificationResult result = V2XMessageProcessor::process_message(raw_message);
+
+    EXPECT_TRUE(signature_hook_called);
+    EXPECT_TRUE(chain_hook_called);
+    EXPECT_FALSE(result.is_valid);
+    EXPECT_TRUE(result.coer_parse_ok);
+    EXPECT_TRUE(result.payload_structure_ok);
+    EXPECT_TRUE(result.signature_valid);
+    EXPECT_FALSE(result.chain_valid);
+    EXPECT_FALSE(result.payload.empty());
+    EXPECT_FALSE(result.signature.empty());
+    EXPECT_FALSE(result.chain.empty());
+    EXPECT_FALSE(result.error_message.empty());
+    EXPECT_NE(result.error_message.find("Certificate chain validation failed"), std::string::npos);
+    EXPECT_FALSE(result.decoded_message.has_value());
+}
+
+TEST(Phase4CryptoBoundaryTest, WrongTrustAnchorFailsClosedAfterValidSignature) {
+    const std::vector<uint8_t> raw_message = hex_to_bytes_local(SIGNED_TYPICAL_BSM_HEX);
+
+    bool signature_hook_called = false;
+    bool chain_hook_called = false;
+
+    CryptoHookGuard hook_guard(
+        [&](const std::vector<uint8_t>& payload,
+            const std::vector<uint8_t>& signature,
+            const std::vector<uint8_t>& issuer_cert) {
+            signature_hook_called = true;
+            EXPECT_FALSE(payload.empty());
+            EXPECT_FALSE(signature.empty());
+            EXPECT_FALSE(issuer_cert.empty());
+            return SignatureVerificationResult{true, "", "test-hook", 0};
+        },
+        [&](const std::vector<std::vector<uint8_t>>& chain, uint64_t validation_time) {
+            chain_hook_called = true;
+            EXPECT_FALSE(chain.empty());
+            EXPECT_EQ(validation_time, 0u);
+            return V2XMessageProcessor::ChainValidationResult{
+                false,
+                "Trust anchor validation failed: configured root does not match chain"
+            };
+        }
+    );
+
+    const MessageVerificationResult result = V2XMessageProcessor::process_message(raw_message);
+
+    EXPECT_TRUE(signature_hook_called);
+    EXPECT_TRUE(chain_hook_called);
+    EXPECT_FALSE(result.is_valid);
+    EXPECT_TRUE(result.coer_parse_ok);
+    EXPECT_TRUE(result.payload_structure_ok);
+    EXPECT_TRUE(result.signature_valid);
+    EXPECT_FALSE(result.chain_valid);
+    EXPECT_FALSE(result.payload.empty());
+    EXPECT_FALSE(result.signature.empty());
+    EXPECT_FALSE(result.chain.empty());
+    EXPECT_NE(result.error_message.find("Trust anchor validation failed"), std::string::npos);
+    EXPECT_FALSE(result.decoded_message.has_value());
+}
+
+TEST(Phase4CryptoBoundaryTest, MissingTrustAnchorStateFailsClosedAfterValidSignature) {
+    const std::vector<uint8_t> raw_message = hex_to_bytes_local(SIGNED_TYPICAL_BSM_HEX);
+
+    bool signature_hook_called = false;
+    bool chain_hook_called = false;
+
+    CryptoHookGuard hook_guard(
+        [&](const std::vector<uint8_t>& payload,
+            const std::vector<uint8_t>& signature,
+            const std::vector<uint8_t>& issuer_cert) {
+            signature_hook_called = true;
+            EXPECT_FALSE(payload.empty());
+            EXPECT_FALSE(signature.empty());
+            EXPECT_FALSE(issuer_cert.empty());
+            return SignatureVerificationResult{true, "", "test-hook", 0};
+        },
+        [&](const std::vector<std::vector<uint8_t>>& chain, uint64_t validation_time) {
+            chain_hook_called = true;
+            EXPECT_FALSE(chain.empty());
+            EXPECT_EQ(validation_time, 0u);
+            return V2XMessageProcessor::ChainValidationResult{
+                false,
+                "Trust anchor validation failed: no trusted root configured"
+            };
+        }
+    );
+
+    const MessageVerificationResult result = V2XMessageProcessor::process_message(raw_message);
+
+    EXPECT_TRUE(signature_hook_called);
+    EXPECT_TRUE(chain_hook_called);
+    EXPECT_FALSE(result.is_valid);
+    EXPECT_TRUE(result.coer_parse_ok);
+    EXPECT_TRUE(result.payload_structure_ok);
+    EXPECT_TRUE(result.signature_valid);
+    EXPECT_FALSE(result.chain_valid);
+    EXPECT_FALSE(result.payload.empty());
+    EXPECT_FALSE(result.signature.empty());
+    EXPECT_FALSE(result.chain.empty());
+    EXPECT_NE(result.error_message.find("no trusted root configured"), std::string::npos);
     EXPECT_FALSE(result.decoded_message.has_value());
 }
