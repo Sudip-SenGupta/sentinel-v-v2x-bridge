@@ -1,10 +1,12 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <string>
 #include <vector>
 
+#include "v2x_crypto_engine.h"
 #include "v2x_structures.hpp"
 
 namespace sentinel::v2x {
@@ -64,6 +66,17 @@ struct MessageVerificationResult {
  */
 class V2XMessageProcessor {
 public:
+    using SignatureVerifierHook = std::function<SignatureVerificationResult(
+        const std::vector<uint8_t>&,
+        const std::vector<uint8_t>&,
+        const std::vector<uint8_t>&
+    )>;
+
+    using ChainValidatorHook = std::function<bool(
+        const std::vector<std::vector<uint8_t>>&,
+        uint64_t
+    )>;
+
     V2XMessageProcessor() = delete;
 
     /**
@@ -84,6 +97,13 @@ public:
      * @return Version string
      */
     static std::string get_version();
+
+    // Test-only seam for off-target crypto-boundary coverage.
+    static void set_test_crypto_hooks(
+        SignatureVerifierHook signature_verifier,
+        ChainValidatorHook chain_validator
+    );
+    static void clear_test_crypto_hooks();
 };
 
 } // namespace sentinel::v2x

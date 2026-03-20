@@ -6,6 +6,11 @@
 
 namespace sentinel::v2x {
 
+namespace {
+V2XMessageProcessor::SignatureVerifierHook g_signature_verifier_hook;
+V2XMessageProcessor::ChainValidatorHook g_chain_validator_hook;
+}
+
 MessageVerificationResult V2XMessageProcessor::process_message(
     const std::vector<uint8_t>& raw_message)
 {
@@ -71,12 +76,21 @@ MessageVerificationResult V2XMessageProcessor::process_message(
                 // STAGE 3: Verify signature
                 bool sig_valid = false;
                 try {
-                    V2XCryptoEngine crypto_engine;
-                    auto sig_result = crypto_engine.verify_ecdsa_signature(
-                        result.payload,
-                        result.signature,
-                        issuer_cert
-                    );
+                    SignatureVerificationResult sig_result{false, "", "", 0};
+                    if (g_signature_verifier_hook) {
+                        sig_result = g_signature_verifier_hook(
+                            result.payload,
+                            result.signature,
+                            issuer_cert
+                        );
+                    } else {
+                        V2XCryptoEngine crypto_engine;
+                        sig_result = crypto_engine.verify_ecdsa_signature(
+                            result.payload,
+                            result.signature,
+                            issuer_cert
+                        );
+                    }
                     sig_valid = sig_result.valid;
                 } catch (const std::exception& e) {
                     result.error_message = "Signature verification error: " +
@@ -93,16 +107,20 @@ MessageVerificationResult V2XMessageProcessor::process_message(
                 // STAGE 4: Validate certificate chain
                 bool chain_valid = false;
                 try {
-                    V2XCryptoEngine crypto_engine;
                     // Build full chain: issuer cert + additional chain certs
                     std::vector<std::vector<uint8_t>> full_chain;
                     full_chain.push_back(issuer_cert);
                     full_chain.insert(full_chain.end(), result.chain.begin(), result.chain.end());
 
-                    chain_valid = crypto_engine.validate_certificate_chain(
-                        full_chain,
-                        0  // Use current time
-                    );
+                    if (g_chain_validator_hook) {
+                        chain_valid = g_chain_validator_hook(full_chain, 0);
+                    } else {
+                        V2XCryptoEngine crypto_engine;
+                        chain_valid = crypto_engine.validate_certificate_chain(
+                            full_chain,
+                            0  // Use current time
+                        );
+                    }
                 } catch (const std::exception& e) {
                     result.error_message = "Certificate chain validation error: " +
                         std::string(e.what());
@@ -158,6 +176,18 @@ MessageVerificationResult V2XMessageProcessor::process_message(
         }
         return result;
     }
+}
+
+void V2XMessageProcessor::set_test_crypto_hooks(
+    SignatureVerifierHook signature_verifier,
+    ChainValidatorHook chain_validator) {
+    g_signature_verifier_hook = std::move(signature_verifier);
+    g_chain_validator_hook = std::move(chain_validator);
+}
+
+void V2XMessageProcessor::clear_test_crypto_hooks() {
+    g_signature_verifier_hook = {};
+    g_chain_validator_hook = {};
 }
 
 std::string V2XMessageProcessor::get_version() {
