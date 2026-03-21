@@ -4,12 +4,23 @@
 #include "v2x_payload_validator.h"
 #include "v2x_crypto_engine.h"
 
+#include <mutex>
+#include <utility>
+
 namespace sentinel::v2x {
 
 namespace {
+struct ChainValidationOutcome {
+    bool valid;
+    std::string error_message;
+};
+
+#if defined(SENTINEL_V2X_TESTING)
+std::mutex g_crypto_hook_mutex;
 V2XMessageProcessor::SignatureVerifierHook g_signature_verifier_hook;
 V2XMessageProcessor::ChainValidatorHook g_chain_validator_hook;
-}
+#endif
+}  // namespace
 
 MessageVerificationResult V2XMessageProcessor::process_message(
     const std::vector<uint8_t>& raw_message)
@@ -77,20 +88,29 @@ MessageVerificationResult V2XMessageProcessor::process_message(
                 bool sig_valid = false;
                 try {
                     SignatureVerificationResult sig_result{false, "", "", 0};
-                    if (g_signature_verifier_hook) {
-                        sig_result = g_signature_verifier_hook(
+#if defined(SENTINEL_V2X_TESTING)
+                    SignatureVerifierHook signature_hook_copy;
+                    {
+                        std::lock_guard<std::mutex> lock(g_crypto_hook_mutex);
+                        signature_hook_copy = g_signature_verifier_hook;
+                    }
+                    if (signature_hook_copy) {
+                        sig_result = signature_hook_copy(
                             result.payload,
                             result.signature,
                             issuer_cert
                         );
                     } else {
+#endif
                         V2XCryptoEngine crypto_engine;
                         sig_result = crypto_engine.verify_ecdsa_signature(
                             result.payload,
                             result.signature,
                             issuer_cert
                         );
+#if defined(SENTINEL_V2X_TESTING)
                     }
+#endif
                     sig_valid = sig_result.valid;
                 } catch (const std::exception& e) {
                     result.error_message = "Signature verification error: " +
@@ -105,22 +125,33 @@ MessageVerificationResult V2XMessageProcessor::process_message(
                 }
 
                 // STAGE 4: Validate certificate chain
-                V2XMessageProcessor::ChainValidationResult chain_result{false, ""};
+                ChainValidationOutcome chain_result{false, ""};
                 try {
                     // Build full chain: issuer cert + additional chain certs
                     std::vector<std::vector<uint8_t>> full_chain;
                     full_chain.push_back(issuer_cert);
                     full_chain.insert(full_chain.end(), result.chain.begin(), result.chain.end());
 
-                    if (g_chain_validator_hook) {
-                        chain_result = g_chain_validator_hook(full_chain, 0);
+#if defined(SENTINEL_V2X_TESTING)
+                    ChainValidatorHook chain_hook_copy;
+                    {
+                        std::lock_guard<std::mutex> lock(g_crypto_hook_mutex);
+                        chain_hook_copy = g_chain_validator_hook;
+                    }
+                    if (chain_hook_copy) {
+                        auto hook_result = chain_hook_copy(full_chain, 0);
+                        chain_result.valid = hook_result.valid;
+                        chain_result.error_message = hook_result.error_message;
                     } else {
+#endif
                         V2XCryptoEngine crypto_engine;
                         chain_result.valid = crypto_engine.validate_certificate_chain(
                             full_chain,
                             0  // Use current time
                         );
+#if defined(SENTINEL_V2X_TESTING)
                     }
+#endif
                 } catch (const std::exception& e) {
                     result.error_message = "Certificate chain validation error: " +
                         std::string(e.what());
@@ -180,17 +211,21 @@ MessageVerificationResult V2XMessageProcessor::process_message(
     }
 }
 
+#if defined(SENTINEL_V2X_TESTING)
 void V2XMessageProcessor::set_test_crypto_hooks(
     SignatureVerifierHook signature_verifier,
     ChainValidatorHook chain_validator) {
+    std::lock_guard<std::mutex> lock(g_crypto_hook_mutex);
     g_signature_verifier_hook = std::move(signature_verifier);
     g_chain_validator_hook = std::move(chain_validator);
 }
 
 void V2XMessageProcessor::clear_test_crypto_hooks() {
+    std::lock_guard<std::mutex> lock(g_crypto_hook_mutex);
     g_signature_verifier_hook = {};
     g_chain_validator_hook = {};
 }
+#endif
 
 std::string V2XMessageProcessor::get_version() {
     return "V2X Message Processor v1.0.0 (Phase 3 Week 2)";

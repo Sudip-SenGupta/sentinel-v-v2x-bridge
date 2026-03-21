@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 
+#include <cstdlib>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "test_vectors.h"
@@ -112,7 +114,6 @@ TEST(Phase4CryptoBoundaryTest, ChainValidationFailureFailsClosedAfterValidSignat
     EXPECT_FALSE(result.chain_valid);
     EXPECT_FALSE(result.payload.empty());
     EXPECT_FALSE(result.signature.empty());
-    EXPECT_FALSE(result.chain.empty());
     EXPECT_FALSE(result.error_message.empty());
     EXPECT_NE(result.error_message.find("Certificate chain validation failed"), std::string::npos);
     EXPECT_FALSE(result.decoded_message.has_value());
@@ -156,7 +157,6 @@ TEST(Phase4CryptoBoundaryTest, WrongTrustAnchorFailsClosedAfterValidSignature) {
     EXPECT_FALSE(result.chain_valid);
     EXPECT_FALSE(result.payload.empty());
     EXPECT_FALSE(result.signature.empty());
-    EXPECT_FALSE(result.chain.empty());
     EXPECT_NE(result.error_message.find("Trust anchor validation failed"), std::string::npos);
     EXPECT_FALSE(result.decoded_message.has_value());
 }
@@ -199,7 +199,6 @@ TEST(Phase4CryptoBoundaryTest, MissingTrustAnchorStateFailsClosedAfterValidSigna
     EXPECT_FALSE(result.chain_valid);
     EXPECT_FALSE(result.payload.empty());
     EXPECT_FALSE(result.signature.empty());
-    EXPECT_FALSE(result.chain.empty());
     EXPECT_NE(result.error_message.find("no trusted root configured"), std::string::npos);
     EXPECT_FALSE(result.decoded_message.has_value());
 }

@@ -316,10 +316,16 @@ TEST_F(COERDecoderTest, ExtractCertificateChain) {
  */
 TEST_F(COERDecoderTest, ExtractPayload) {
     COERMessage msg = parse_hex_message(UNSIGNED_MINIMAL_HEX);
-    
+
+    const std::vector<uint8_t> expected_payload{
+        0x01, 0x02, 0x03, 0x04, 0x05,
+        0x06, 0x07, 0x08, 0x09, 0x0A,
+        0x0B, 0x0C, 0x0D, 0x0E, 0x0F
+    };
+
     auto payload = COERDecoder::get_payload(msg);
-    EXPECT_EQ(payload.size(), COERDecoder::get_payload(msg).size());
-    EXPECT_EQ(payload, COERDecoder::get_payload(msg));
+    EXPECT_EQ(payload.size(), UNSIGNED_MINIMAL_EXPECTED_PAYLOAD_SIZE);
+    EXPECT_EQ(payload, expected_payload);
 }
 
 /**

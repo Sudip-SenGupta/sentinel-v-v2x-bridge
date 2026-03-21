@@ -66,22 +66,6 @@ struct MessageVerificationResult {
  */
 class V2XMessageProcessor {
 public:
-    struct ChainValidationResult {
-        bool valid;
-        std::string error_message;
-    };
-
-    using SignatureVerifierHook = std::function<SignatureVerificationResult(
-        const std::vector<uint8_t>&,
-        const std::vector<uint8_t>&,
-        const std::vector<uint8_t>&
-    )>;
-
-    using ChainValidatorHook = std::function<ChainValidationResult(
-        const std::vector<std::vector<uint8_t>>&,
-        uint64_t
-    )>;
-
     V2XMessageProcessor() = delete;
 
     /**
@@ -103,12 +87,30 @@ public:
      */
     static std::string get_version();
 
+#if defined(SENTINEL_V2X_TESTING)
+    struct ChainValidationResult {
+        bool valid;
+        std::string error_message;
+    };
+
+    using SignatureVerifierHook = std::function<SignatureVerificationResult(
+        const std::vector<uint8_t>&,
+        const std::vector<uint8_t>&,
+        const std::vector<uint8_t>&
+    )>;
+
+    using ChainValidatorHook = std::function<ChainValidationResult(
+        const std::vector<std::vector<uint8_t>>&,
+        uint64_t
+    )>;
+
     // Test-only seam for off-target crypto-boundary coverage.
     static void set_test_crypto_hooks(
         SignatureVerifierHook signature_verifier,
         ChainValidatorHook chain_validator
     );
     static void clear_test_crypto_hooks();
+#endif
 };
 
 } // namespace sentinel::v2x
