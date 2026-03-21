@@ -51,10 +51,10 @@ MessageVerificationResult V2XMessageProcessor::process_message(
         const auto& payload = COERDecoder::get_payload(msg);
 
         // ===== STAGE 2: PAYLOAD STRUCTURE VALIDATION =====
-        // Current Android test fixtures carry raw parser-compatible frame payloads rather than
-        // DER-wrapped application payloads. Validate DER only when the payload is actually tagged
-        // as a DER SEQUENCE and otherwise allow the parser-compatible payload contract through.
-        if (msg.is_signed() && !payload.empty() && payload[0] == 0x30) {
+        // Current fixtures include both raw parser-compatible frame payloads and DER-wrapped
+        // application payloads. Only run DER validation when the payload actually looks like a
+        // complete DER SEQUENCE; a leading 0x30 alone is not enough to distinguish the formats.
+        if (msg.is_signed() && PayloadValidator::is_complete_der_sequence(payload)) {
             try {
                 PayloadValidator::validate_der_structure(payload);
                 result.payload_structure_ok = true;

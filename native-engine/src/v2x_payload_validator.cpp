@@ -7,6 +7,18 @@ namespace sentinel::v2x {
 PayloadValidationException::PayloadValidationException(const std::string& message)
     : std::runtime_error(message) {}
 
+bool PayloadValidator::is_complete_der_sequence(const std::vector<uint8_t>& payload) {
+    if (payload.size() < 2 || payload[0] != 0x30) {
+        return false;
+    }
+
+    try {
+        return parse_der_length_field(payload) == payload.size();
+    } catch (const PayloadValidationException&) {
+        return false;
+    }
+}
+
 void PayloadValidator::validate_der_structure(const std::vector<uint8_t>& payload) {
     // Check 1: Minimum size (tag + length)
     if (payload.empty()) {
@@ -60,7 +72,7 @@ size_t PayloadValidator::get_der_declared_length(const std::vector<uint8_t>& pay
     
     // Long form
     uint8_t num_octets = len_byte & 0x7F;
-    if (num_octets == 0 || payload.size() < 2 + num_octets) {
+    if (num_octets == 0 || payload.size() < static_cast<size_t>(2 + num_octets)) {
         throw PayloadValidationException(
             "get_der_declared_length: truncated or invalid length field"
         );
@@ -101,7 +113,7 @@ size_t PayloadValidator::parse_der_length_field(const std::vector<uint8_t>& payl
     }
     
     // Check enough bytes present for length field
-    if (payload.size() < 2 + num_octets) {
+    if (payload.size() < static_cast<size_t>(2 + num_octets)) {
         throw PayloadValidationException(
             "Payload validation failed: truncated length field (expected " +
             std::to_string(2 + num_octets) + " bytes for header, have " +
