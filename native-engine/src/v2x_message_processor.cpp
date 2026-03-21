@@ -192,7 +192,7 @@ MessageVerificationResult V2XMessageProcessor::process_message(
         try {
             result.frame_type = V2XFrameDecoder::detect_frame_type(result.payload);
             DecodedV2XMessage decoded = V2XFrameDecoder::decode(result.payload, result.frame_type);
-            decoded.is_verified = true;
+            decoded.is_verified = msg.is_signed();
             decoded.issuer_name = msg.is_signed() ? "certificate-chain-verified" : "unsigned";
             result.decoded_message = std::move(decoded);
         } catch (const std::exception& e) {

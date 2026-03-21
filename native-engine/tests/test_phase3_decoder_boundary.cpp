@@ -110,7 +110,7 @@ TEST(Phase3DecoderBoundaryTest, ProcessorReturnsDecodedOutputForUnsignedBSM) {
     EXPECT_EQ(result.frame_type, MessageFrameType::BSM);
     ASSERT_TRUE(result.decoded_message.has_value());
     EXPECT_EQ(result.decoded_message->frame_type, MessageFrameType::BSM);
-    EXPECT_TRUE(result.decoded_message->is_verified);
+    EXPECT_FALSE(result.decoded_message->is_verified);
     EXPECT_EQ(result.decoded_message->issuer_name, "unsigned");
     EXPECT_EQ(result.decoded_message->get_bsm().sequence_num, 0x42);
 }
