@@ -86,8 +86,8 @@ MessageVerificationResult V2XMessageProcessor::process_message(
 
                 // STAGE 3: Verify signature
                 bool sig_valid = false;
+                SignatureVerificationResult sig_result{false, "", "", 0};
                 try {
-                    SignatureVerificationResult sig_result{false, "", "", 0};
 #if defined(SENTINEL_V2X_TESTING)
                     SignatureVerifierHook signature_hook_copy;
                     {
@@ -120,7 +120,9 @@ MessageVerificationResult V2XMessageProcessor::process_message(
 
                 result.signature_valid = sig_valid;
                 if (!sig_valid) {
-                    result.error_message = "Signature verification failed";
+                    result.error_message = sig_result.error_message.empty()
+                        ? "Signature verification failed"
+                        : "Signature verification failed: " + sig_result.error_message;
                     return result;
                 }
 

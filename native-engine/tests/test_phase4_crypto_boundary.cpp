@@ -72,7 +72,7 @@ TEST(Phase4CryptoBoundaryTest, InvalidSignatureFailsClosedBeforeChainValidation)
     EXPECT_FALSE(result.payload.empty());
     EXPECT_FALSE(result.signature.empty());
     EXPECT_FALSE(result.error_message.empty());
-    EXPECT_NE(result.error_message.find("Signature verification failed"), std::string::npos);
+    EXPECT_EQ(result.error_message, "Signature verification failed: forced invalid signature");
     EXPECT_FALSE(result.decoded_message.has_value());
 }
 
