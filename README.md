@@ -2,6 +2,11 @@
 
 Android and native V2X message-processing bridge with JNI integration, parser-compatible COER fixture coverage, and native cryptographic validation.
 
+This repository is highly useful for its specific purpose: to serve as a V2X Security Bridge for Android.
+
+Primary Function: Its core function is to provide a secure and reliable way for an Android application to process Vehicle-to-Everything (V2X) messages. It handles the critical and complex tasks of parsing binary message formats (COER), verifying cryptographic signatures, and validating certificate chains.
+Target Application: It is intended for any Android-based system that needs to consume V2X data, such as an in-vehicle infotainment (IVI) system or a roadside unit interface. By abstracting the security and parsing complexity into a dedicated library, it allows application developers to focus on using the V2X data rather than securing it.
+
 ## Repository Layout
 
 - `app/` - Android application module
@@ -95,4 +100,3 @@ It does not yet claim:
 - production-complete semantic validation of BSM, SPaT, and PSM contents
 
 ![Visitors](https://api.visitorbadge.io/api/visitors?path=https%3A%2F%2Fgithub.com%2FSudip-SenGupta%2Fsentinel-v-v2x-bridge&label=TOTAL%20VISITS&countColor=%23263159)
-
