@@ -13,8 +13,8 @@ endif()
 find_library(BOTAN_LIB botan-2 PATHS /usr/lib/x86_64-linux-gnu /usr/lib /usr/local/lib REQUIRED)
 find_path(BOTAN_INCLUDE botan/version.h PATHS /usr/include/botan-2 /usr/local/include/botan-2 REQUIRED)
 
-message(STATUS "✓ Google Test found: ${GTEST_LIBRARIES}")
-message(STATUS "✓ Botan library found: ${BOTAN_LIB}")
+message(STATUS "OK Google Test found: ${GTEST_LIBRARIES}")
+message(STATUS "OK Botan library found: ${BOTAN_LIB}")
 
 # ============================================================================
 # Build test executable
@@ -24,6 +24,8 @@ add_executable(crypto_engine_test
     test_coer_decoder_vectors.cpp
     test_message_processor_integration.cpp
     test_v2x_message_frame_integration.cpp
+    test_phase3_decoder_boundary.cpp
+    test_phase4_crypto_boundary.cpp
     ../src/v2x_crypto_engine.cpp
     ../src/v2x_coer_decoder.cpp
     ../src/v2x_payload_validator.cpp
@@ -44,6 +46,10 @@ target_link_libraries(crypto_engine_test PRIVATE
     ${GTEST_LIBRARIES}
 )
 
+target_compile_definitions(crypto_engine_test PRIVATE
+    SENTINEL_V2X_TESTING
+)
+
 # Compile options
 target_compile_options(crypto_engine_test PRIVATE
     -Wall
@@ -56,4 +62,4 @@ target_compile_options(crypto_engine_test PRIVATE
 # Add test to CTest
 add_test(NAME CryptoEngineTests COMMAND crypto_engine_test)
 
-message(STATUS "✓ Test executable configured: crypto_engine_test")
+message(STATUS "OK Test executable configured: crypto_engine_test")

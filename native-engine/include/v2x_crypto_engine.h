@@ -72,6 +72,11 @@ public:
      * @return true if initialization successful, false otherwise
      */
     bool initialize_with_root_ca(const std::vector<uint8_t>& root_ca_der);
+
+    /**
+     * @brief Clear the configured trusted root CA
+     */
+    void clear_trusted_root_ca();
     
     /**
      * @brief Verify ECDSA P-256 signature on message
@@ -145,12 +150,12 @@ public:
     std::string extract_sender_info(const std::vector<uint8_t>& certificate_der);
     
     /**
-     * @brief Check certificate expiration
+     * @brief Check only the certificate validity window
      * @param cert_der DER-encoded certificate
      * @param current_time_unix Unix timestamp (0 = current time)
-     * @return true if certificate is valid at specified time
+     * @return true if certificate is within its not-before/not-after window
      */
-    bool is_certificate_valid(
+    bool is_certificate_time_valid(
         const std::vector<uint8_t>& cert_der,
         uint64_t current_time_unix = 0
     );

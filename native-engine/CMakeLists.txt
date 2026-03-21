@@ -11,6 +11,8 @@ if(ANDROID)
         src/v2x_jni.cpp
         src/v2x_coer_decoder.cpp
         src/v2x_message_frame.cpp
+        src/v2x_payload_validator.cpp
+        src/v2x_message_processor.cpp
         src/v2x_jni_message_processor.cpp
         src/v2x_crypto_engine.cpp
         src/v2x_jni_crypto.cpp
@@ -23,7 +25,7 @@ if(ANDROID)
 
     # Phase 6A: Link pre-built Botan for Android
     set(BOTAN_ANDROID_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../botan-android/${ANDROID_ABI}")
-    
+
     if(EXISTS "${BOTAN_ANDROID_ROOT}/lib/libbotan-2.a")
         message(STATUS "Found pre-built Botan at: ${BOTAN_ANDROID_ROOT}")
         target_include_directories(v2x-jni PRIVATE "${BOTAN_ANDROID_ROOT}/include")

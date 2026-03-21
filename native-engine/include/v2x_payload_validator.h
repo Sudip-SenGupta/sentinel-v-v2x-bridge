@@ -29,6 +29,18 @@ public:
 class PayloadValidator {
 public:
     /**
+     * Check whether payload is a complete DER SEQUENCE blob.
+     *
+     * This is a non-throwing probe used to distinguish actual DER-wrapped
+     * payloads from raw frame payloads that may coincidentally begin with
+     * 0x30 (for example parser-compatible PSM payloads in current fixtures).
+     *
+     * @param payload Raw payload bytes
+     * @return true if payload starts with a valid DER SEQUENCE header and the
+     *         declared length matches payload.size(), false otherwise
+     */
+    static bool is_complete_der_sequence(const std::vector<uint8_t>& payload);
+    /**
      * Validate basic DER structure of payload
      * 
      * Performs:

@@ -81,6 +81,13 @@ TEST(PayloadValidatorTest, ValidMaximumLength) {
     });
 }
 
+TEST(PayloadValidatorTest, CompleteDerSequenceProbeMatchesRealDerPayload) {
+    std::vector<uint8_t> content = {0x04, 0x03, 'B', 'S', 'M'};
+    auto der = create_der_sequence(content);
+
+    EXPECT_TRUE(PayloadValidator::is_complete_der_sequence(der));
+}
+
 // ============================================================================
 // TEST: PayloadValidator - Invalid DER Structures
 // ============================================================================
@@ -134,6 +141,15 @@ TEST(PayloadValidatorTest, TruncatedLengthFieldThrows) {
     EXPECT_THROW({
         PayloadValidator::validate_der_structure(truncated);
     }, PayloadValidationException);
+}
+
+TEST(PayloadValidatorTest, CompleteDerSequenceProbeRejectsRawPsmLikePayload) {
+    std::vector<uint8_t> raw_psm_like = {
+        0x30, 0x00, 0x00, 0x00, 0x2A, 0x00, 0xAA, 0xBB,
+        0xCC, 0xDD, 0xEE, 0xFF, 0x16, 0x83, 0xFE, 0x08
+    };
+
+    EXPECT_FALSE(PayloadValidator::is_complete_der_sequence(raw_psm_like));
 }
 
 // ============================================================================

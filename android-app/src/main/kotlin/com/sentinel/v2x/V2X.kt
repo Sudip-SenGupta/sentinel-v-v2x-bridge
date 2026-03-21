@@ -138,12 +138,34 @@ object V2X {
     external fun verifySignature(message: ByteArray, signature: ByteArray, publicKey: ByteArray): Boolean
 
     /**
-     * Check if a certificate is valid
+     * Initialize the trusted root CA used for certificate-chain validation.
+     *
+     * @param rootCaDER Root CA certificate in DER format
+     * @return true if the trusted root was loaded successfully
+     */
+    external fun initializeWithRootCA(rootCaDER: ByteArray): Boolean
+
+    /**
+     * Clear the configured trusted root CA.
+     *
+     * Useful for test isolation and explicit trust-store resets.
+     */
+    external fun clearTrustedRootCA(): Boolean
+
+    /**
+     * Check only whether a certificate is within its validity time window.
+     *
+     * This does not verify trust anchors or certificate chains.
      *
      * @param certDER Certificate in DER format
-     * @return true if certificate is valid
+     * @return true if the certificate is within its not-before/not-after window
      */
     external fun isValidCertificate(certDER: ByteArray): Boolean
+
+    /**
+     * Alias for the time-window certificate check.
+     */
+    fun isCertificateTimeValid(certDER: ByteArray): Boolean = isValidCertificate(certDER)
 
     /**
      * Validate a certificate chain

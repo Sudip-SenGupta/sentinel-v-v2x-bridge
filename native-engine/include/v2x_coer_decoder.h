@@ -41,7 +41,7 @@ class COERDecoder;
 /** IEEE 1609.2 Protocol Version (2016) */
 constexpr uint8_t COER_PROTOCOL_VERSION = 3;
 
-/** Message Type Bits (IEEE 1609.2-2016 §4.2.1) */
+/** Message Type Bits (IEEE 1609.2-2016 Section 4.2.1) */
 enum class MessageType : uint8_t {
     UNSECURED              = 0x00,  /** No signature or encryption */
     SIGNED                 = 0x02,  /** Integrity protection (ECDSA signature) */
@@ -107,6 +107,20 @@ public:
  * Contains the extracted components of a V2X message including metadata,
  * payload data, and optional signature container with certificate chain.
  */
+/**
+ * @struct SignedMessageComponents
+ * @brief Decoder-owned view of the signed portions of a parsed message
+ *
+ * Keeps extraction rules inside the decoder contract so higher-level callers
+ * do not need to know which COERMessage fields carry the signer certificate,
+ * chain, or signature bytes.
+ */
+struct SignedMessageComponents {
+    const std::vector<uint8_t>* payload = nullptr;
+    const std::vector<uint8_t>* signature = nullptr;
+    const std::vector<uint8_t>* issuer_cert = nullptr;
+    const std::vector<std::vector<uint8_t>>* cert_chain = nullptr;
+};
 struct COERMessage {
     /**
      * @struct SignatureContainer
@@ -297,6 +311,8 @@ struct COERMessage {
  */
 class COERDecoder {
 public:
+    COERDecoder() = delete;
+
     
     // ========================================================================
     // Core Parsing Methods
@@ -505,6 +521,18 @@ public:
      * @complexity Space: O(m) where m = total size of all chain certificates
      */
     static std::vector<std::vector<uint8_t>> extract_certificate_chain(const COERMessage& message);
+
+    /**
+     * Extract all signed-message components through the decoder contract.
+     *
+     * This keeps higher-level callers from reaching into COERMessage fields
+     * directly for payload, signature, issuer certificate, and chain handling.
+     *
+     * @param message Parsed COERMessage (from parse())
+     * @return SignedMessageComponents view into the parsed message
+     * @throws COERFormatException if message is not signed or required parts are missing
+     */
+    static SignedMessageComponents extract_signed_components(const COERMessage& message);
     
     /**
      * Extract message payload (the data that was signed)
@@ -550,131 +578,24 @@ public:
     // ========================================================================
     // Utility and Information Methods
     // ========================================================================
-    
-    /**
-     * Get descriptive string for message type
-     * 
-     * @param message_type Raw message type byte
-     * @return Human-readable description (e.g., "Signed", "Encrypted+Signed")
-     */
-    static std::string message_type_to_string(uint8_t message_type);
-    
-    /**
-     * Get descriptive string for signature algorithm
-     * 
-     * @param algorithm Signature algorithm byte
-     * @return Human-readable description (e.g., "ECDSA P-256")
-     */
-    static std::string signature_algorithm_to_string(uint8_t algorithm);
-    
+
     /**
      * Get version string for compatibility checking
      * 
      * @return COER decoder implementation version (e.g., "1.0.0")
      */
     static std::string get_version();
-    
+
     // ========================================================================
     // Logging and Debug
     // ========================================================================
-    
-    /**
-     * Enable or disable debug logging
-     * 
-     * When enabled, logs detailed parsing steps for troubleshooting.
-     * Has minimal performance impact when disabled.
-     * 
-     * @param enabled true to enable debug logs
-     */
+
     static void set_debug_logging(bool enabled);
-    
-    /**
-     * Log parsed message structure for debugging
-     * 
-     * Outputs: message type, version, payload size, signature presence, etc.
-     * 
-     * @param message Parsed COERMessage to log
-     */
+
+private:
+    static std::string message_type_to_string(uint8_t message_type);
+    static std::string signature_algorithm_to_string(uint8_t algorithm);
     static void log_message_structure(const COERMessage& message);
-    
-    // ========================================================================
-    // Phase 4: Message Frame Type Identification (NEW)
-    // ========================================================================
-    
-    /**
-     * Detect message frame type from payload
-     * 
-     * Examines the raw payload bytes to identify the V2X message type
-     * (BSM, SPaT, PSM, etc.) using IEEE 1609.2 frame identifiers.
-     * 
-     * This is the FIRST STEP in decoding actual V2X data:
-     *   1. parse() → Extract COER structure
-     *   2. detect_frame_type() → Identify message type
-     *   3. decode_frame() → Convert to structured data
-     * 
-     * @param payload Raw V2X payload bytes (from COERMessage.payload)
-     * 
-     * @return MessageFrameType enum value
-     * @return Returns UNKNOWN if frame type cannot be detected
-     * 
-     * @throws COERBufferException if payload is too short
-     * 
-     * @example
-     * @code
-     *   COERMessage msg = COERDecoder::parse(raw_data);
-     *   MessageFrameType frame_type = COERDecoder::detect_frame_type(msg.payload);
-     *   
-     *   if (frame_type == MessageFrameType::BSM) {
-     *       // Decode as Basic Safety Message
-     *   }
-     * @endcode
-     */
-    static MessageFrameType detect_frame_type(const std::vector<uint8_t>& payload);
-    
-    /**
-     * Decode payload into structured V2X message
-     * 
-     * Converts raw COER-encoded payload into a structured object with
-     * typed fields (position, speed, heading, etc.).
-     * 
-     * This relies on detect_frame_type() to identify the message structure.
-     * Unsupported frame types return DecodedV2XMessage with frame_type=UNKNOWN.
-     * 
-     * @param payload Raw payload from COERMessage::payload
-     * @param frame_type Message type (typically from detect_frame_type())
-     * 
-     * @return DecodedV2XMessage with decoded fields
-     * 
-     * @throws COERFormatException if payload structure is invalid
-     * @throws COERBufferException if payload is truncated
-     * 
-     * @example
-     * @code
-     *   COERMessage msg = COERDecoder::parse(raw_data);
-     *   auto frame_type = COERDecoder::detect_frame_type(msg.payload);
-     *   auto decoded = COERDecoder::decode_frame(msg.payload, frame_type);
-     *   
-     *   if (decoded.frame_type == MessageFrameType::BSM) {
-     *       double lat = decoded.payload.bsm.position.latitude;
-     *       double lon = decoded.payload.bsm.position.longitude;
-     *       float speed = decoded.payload.bsm.motion.speed;
-     *       LOGI("Vehicle at (%.6f, %.6f) moving at %.1f m/s",
-     *            lat, lon, speed);
-     *   }
-     * @endcode
-     */
-    static DecodedV2XMessage decode_frame(
-        const std::vector<uint8_t>& payload,
-        MessageFrameType frame_type
-    );
-    
-    /**
-     * Get frame type name as human-readable string
-     * 
-     * @param frame_type MessageFrameType enum value
-     * @return String like "BSM (Basic Safety Message)"
-     */
-    static std::string frame_type_to_string(MessageFrameType frame_type);
 };
 
 
